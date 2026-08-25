@@ -1,0 +1,13 @@
+<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0; url=/user/"><title>PRISHAA Store</title></head><body><script>
+(function(){
+  const slides = document.querySelectorAll(".hero-slide");
+  let current = 0;
+  if(!slides.length) return;
+  setInterval(function(){
+    slides[current].classList.remove("active");
+    current = (current + 1) % slides.length;
+    slides[current].classList.add("active");
+  }, 4000);
+})();
+</script>
+</body></html>

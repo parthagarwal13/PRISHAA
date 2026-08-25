@@ -1,0 +1,343 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PRISHAA Admin</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f6f3f5;color:#2d1722}header{background:#fff;padding:15px 5%;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e7dde2}.logo{font-size:28px;font-weight:800;color:#aa3d69;line-height:1}.logo small{display:block;font-size:10px;letter-spacing:2px;margin-top:4px;font-weight:700;color:#7d2c4d}
+.container{padding:30px 5%}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:15px}.stat{background:#fff;padding:20px;border:1px solid #e7dde2;border-radius:15px}.num{font-size:28px;font-weight:800;margin-top:8px}.tabs{display:flex;gap:10px;margin:25px 0}.tab{background:#fff;border:1px solid #e7dde2;padding:10px 15px;border-radius:10px;font-weight:700;cursor:pointer}.tab.active{background:#aa3d69;color:#fff}.panel{display:none}.panel.active{display:block}.head{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}
+.tablewrap{background:#fff;border-radius:15px;overflow:auto}.table{width:100%;border-collapse:collapse;min-width:900px}.table th,.table td{padding:14px;border-bottom:1px solid #eee;text-align:left}.thumb{width:70px;height:80px;object-fit:cover;border-radius:8px;background:#f1e8ec}.order{background:#fff;border:1px solid #e7dde2;border-radius:15px;padding:17px;margin-bottom:12px}
+.btn{border:0;border-radius:10px;padding:10px 15px;cursor:pointer;font-weight:700}.pink{background:#aa3d69;color:#fff}.soft{background:#f4dfe8;color:#7d2c4d}.danger{background:#ffe1e1;color:#9a2424}.modal{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center;padding:20px;z-index:50}.modal.open{display:flex}.box{width:min(720px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:20px;padding:25px}.close{float:right;border:0;background:#eee;border-radius:50%;width:35px;height:35px;cursor:pointer}.form{display:grid;gap:12px;margin-top:18px}.form input,.form textarea,.form select{padding:12px;border:1px solid #e5d9df;border-radius:10px}.form textarea{min-height:90px}.preview{width:150px;height:180px;object-fit:cover;border-radius:10px;display:none;border:1px solid #ddd}.hint{font-size:13px;color:#6d5961}
+@media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}}@media(max-width:600px){.stats{grid-template-columns:1fr}}
+
+.order-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:16px;
+}
+.order-time{
+  margin-top:4px;
+  color:#6d5961;
+  font-size:13px;
+}
+.customer-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  margin-bottom:16px;
+}
+.address-box{
+  grid-column:1 / -1;
+  background:#fff7fa;
+  border:1px solid #f0dfe6;
+  border-radius:10px;
+  padding:12px;
+  line-height:1.5;
+}
+.items-heading{
+  font-weight:800;
+  margin:8px 0 8px;
+}
+.order-items{
+  border:1px solid #eee;
+  border-radius:10px;
+  overflow:hidden;
+}
+.order-item{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:15px;
+  padding:11px 13px;
+  background:#fff;
+  border-bottom:1px solid #eee;
+}
+.order-item:last-child{
+  border-bottom:none;
+}
+.order-item-meta{
+  color:#6d5961;
+  font-size:13px;
+  margin-top:4px;
+}
+.order-item-empty{
+  padding:14px;
+  color:#6d5961;
+}
+.order-total{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-top:14px;
+  padding-top:12px;
+  border-top:1px solid #e7dde2;
+  font-size:18px;
+}
+@media(max-width:700px){
+  .customer-grid{grid-template-columns:1fr}
+  .address-box{grid-column:auto}
+  .order-top{flex-direction:column}
+}
+
+
+.premium-tagline{
+    display:inline-block;
+    font-family:"Segoe Script","Brush Script MT","Lucida Handwriting",cursive;
+    font-weight:700;
+    font-size:0.92em;
+    line-height:1.08;
+    letter-spacing:0.2px;
+    color:#aa3d69;
+}
+
+
+.visit-box{
+    margin-top:20px;
+    padding:18px 20px;
+    border-radius:16px;
+    background:#fff;
+    border:1px solid #eadbe2;
+    box-shadow:0 8px 24px #0000000d;
+}
+.visit-title{
+    font-weight:800;
+    font-size:18px;
+    color:#aa3d69;
+    margin-bottom:8px;
+}
+.visit-address{
+    color:#4d3c44;
+    line-height:1.6;
+}
+.visit-contact{
+    display:inline-block;
+    margin-top:12px;
+    padding:10px 16px;
+    border-radius:22px;
+    background:#aa3d69;
+    color:#fff;
+    text-decoration:none;
+    font-weight:700;
+}
+.visit-note{
+    margin-top:8px;
+    color:#6d5961;
+    font-size:13px;
+}
+.checkout-contact{
+    margin-top:12px;
+    padding:14px;
+    border-radius:12px;
+    background:#fff7fa;
+    border:1px solid #f0dfe6;
+    line-height:1.6;
+}
+.checkout-contact a{
+    color:#aa3d69;
+    font-weight:800;
+}
+
+
+.prishaa-signature{
+  margin-top:16px;
+  font-family:"Segoe Script","Brush Script MT","Lucida Handwriting",cursive;
+  font-size:20px;
+  font-weight:600;
+  letter-spacing:.3px;
+  color:#f0c6d8;
+}
+
+
+.brand-visit-block{
+  margin:28px 0 0;
+  padding:24px 26px;
+  border:1px solid #eadbe2;
+  border-radius:18px;
+  background:#fff;
+  box-shadow:0 8px 24px rgba(45,23,34,.06);
+}
+.brand-visit-top{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:32px;
+  align-items:center;
+}
+.visit-copy{
+  padding-right:24px;
+  border-right:1px solid #eadbe2;
+}
+.visit-heading{
+  color:#aa3d69;
+  font-weight:800;
+  font-size:20px;
+  margin-bottom:10px;
+}
+.visit-address{
+  color:#43353b;
+  line-height:1.5;
+  font-size:16px;
+}
+.visit-call{
+  display:inline-block;
+  margin-top:12px;
+  padding:10px 16px;
+  border-radius:22px;
+  background:#aa3d69;
+  color:#fff;
+  text-decoration:none;
+  font-weight:800;
+}
+.brand-copy{
+  text-align:left;
+}
+.brand-name{
+  font-family:"Segoe Script","Brush Script MT","Lucida Handwriting",cursive;
+  font-size:42px;
+  line-height:1;
+  font-weight:700;
+  color:#aa3d69;
+}
+.brand-subtitle{
+  margin-top:7px;
+  font-size:12px;
+  letter-spacing:3px;
+  font-weight:800;
+  color:#7d2c4d;
+}
+.brand-tagline{
+  margin-top:15px;
+  font-family:"Segoe Script","Brush Script MT","Lucida Handwriting",cursive;
+  font-size:24px;
+  line-height:1.2;
+  font-weight:700;
+  color:#aa3d69;
+}
+.brand-signature{
+  margin-top:12px;
+  font-family:"Segoe Script","Brush Script MT","Lucida Handwriting",cursive;
+  font-size:21px;
+  color:#d98eaa;
+  font-weight:600;
+}
+.brand-visit-note{
+  margin-top:18px;
+  padding-top:14px;
+  border-top:1px solid #eadbe2;
+  color:#6d5961;
+  font-size:13px;
+}
+@media(max-width:760px){
+  .brand-visit-top{
+    grid-template-columns:1fr;
+    gap:20px;
+  }
+  .visit-copy{
+    padding-right:0;
+    padding-bottom:18px;
+    border-right:0;
+    border-bottom:1px solid #eadbe2;
+  }
+  .brand-copy{
+    text-align:center;
+  }
+  .brand-name{
+    font-size:36px;
+  }
+  .brand-tagline{
+    font-size:21px;
+  }
+}
+
+
+.order-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.delete-order-btn{
+  background:#ffe1e1;
+  color:#9a2424;
+}
+
+</style></head><body>
+<header><div class="logo">PRISHAA ADMIN</div><div style="display:flex;gap:8px;align-items:center"><button class="btn soft" onclick="openStore()">View Store</button><button class="btn danger" onclick="logoutAdmin()">Logout</button></div></header>
+<main class="container">
+<div class="stats"><div class="stat">Total Orders<div id="s1" class="num">0</div></div><div class="stat">Pending<div id="s2" class="num">0</div></div><div class="stat">Revenue<div id="s3" class="num">₹0</div></div><div class="stat">Products<div id="s4" class="num">0</div></div></div>
+<div class="tabs"><button class="tab active" onclick="showTab('orders',this)">Orders</button><button class="tab" onclick="showTab('products',this)">Products</button></div>
+<section id="orders" class="panel active"><div class="head"><h2>Customer Orders</h2><button class="btn soft" onclick="load()">Refresh</button></div><div id="ordersList"></div></section>
+<section id="products" class="panel"><div class="head"><h2>Products</h2><button class="btn pink" onclick="openForm()">+ Add Product</button></div><div class="tablewrap"><table class="table"><thead><tr><th>Image</th><th>Product</th><th>Category</th><th>Price</th><th>Size</th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table></div></section>
+</main>
+<div id="modal" class="modal"><div class="box"><button class="close" onclick="closeForm()">×</button><h2 id="title">Add Product</h2><form id="form" class="form"><input id="name" required placeholder="Product name"><select id="category">
+<option>Suits</option>
+<option>Lehengas</option>
+<option>Blouses</option>
+<option>Dupattas</option>
+<option>Accessories</option>
+<option>Co-ord Sets</option>
+</select><input id="price" type="number" min="0" required placeholder="Price"><input id="size" placeholder="S, M, L, XL">
+<input id="length" placeholder="Length (optional, e.g. 42 in)"><input id="color" placeholder="Colour"><input id="occasion" placeholder="Occasion"><label><b>Product Image</b></label><input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp" required><div class="hint">PNG / JPG / JPEG / WEBP supported. No URL needed.</div><img id="preview" class="preview"><textarea id="description" placeholder="Description"></textarea><button class="btn pink">Save Product</button></form></div></div>
+
+<script>
+const $=id=>document.getElementById(id);const money=n=>"₹"+Number(n||0).toLocaleString("en-IN");const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));let products=[],orders=[],editingId=null;
+async function api(path,options={}){
+  const method=(options.method||"GET").toUpperCase();
+  const maxAttempts=method==="GET"?6:1;
+  let lastError=null;
+
+  for(let attempt=0; attempt<maxAttempts; attempt++){
+    try{
+      const r=await fetch(path,{
+        cache:"no-store",
+        credentials:"same-origin",
+        ...options,
+        headers:{"Content-Type":"application/json",...(options.headers||{})}
+      });
+
+      if(r.status===401){
+        location.href="/admin/";
+        throw new Error("Admin login required.");
+      }
+
+      const d=await r.json().catch(()=>({}));
+      if(r.ok) return d;
+
+      lastError=new Error(d.error||`Request failed (${r.status})`);
+      if(![502,503,504].includes(r.status) || attempt===maxAttempts-1) throw lastError;
+    }catch(err){
+      lastError=err;
+      if(attempt===maxAttempts-1 || method!=="GET") throw err;
+    }
+
+    const wait=[800,1200,1800,2500,3500][attempt]||3500;
+    await new Promise(resolve=>setTimeout(resolve,wait));
+  }
+
+  throw lastError||new Error("Request failed");
+}
+async function load(){
+  try{
+    orders=await api("/api/orders");
+    products=await api("/api/products");
+    $("s1").textContent=orders.length;$("s2").textContent=orders.filter(o=>o.status==="Pending").length;$("s3").textContent=money(orders.filter(o=>o.status!=="Cancelled").reduce((s,o)=>s+Number(o.total||0),0));$("s4").textContent=products.length;renderProducts();renderOrders();
+  }catch(e){
+    $("ordersList").innerHTML='<div class="order" style="text-align:center;padding:35px"><b>Opening PRISHAA Admin…</b><br><span style="color:#6d5961">Please wait a few seconds while the server starts.</span></div>';
+    setTimeout(load,1500);
+  }
+}
+function renderProducts(){$("rows").innerHTML=products.map(p=>`<tr><td><img class="thumb" src="${esc(p.image)}" onerror="this.src='https://via.placeholder.com/100x120?text=PRISHAA'"></td><td><b>${esc(p.name)}</b><div>${esc(p.color||"")}</div></td><td>${esc(p.category)}</td><td>${money(p.price)}</td><td>${esc(p.size||"-")}${p.length?`<div style="font-size:12px;color:#6d5961;margin-top:3px">Length: ${esc(p.length)}</div>`:""}</td><td><button class="btn soft" onclick="editProduct(${p.id})">Edit</button> <button class="btn danger" onclick="deleteProduct(${p.id})">Delete</button></td></tr>`).join("")}
+function renderOrders(){const a=orders;$("ordersList").innerHTML=a.length?a.map(o=>{const items=Array.isArray(o.items)?o.items:[];const itemsHtml=items.length?items.map(i=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:10px 12px;border-bottom:1px solid #eee"><div><b>${esc(i.productName||"Product")}</b><div style="font-size:13px;color:#6d5961">Qty: ${Number(i.quantity||1)} × ${money(i.price||0)}</div></div><b>${money(Number(i.price||0)*Number(i.quantity||1))}</b></div>`).join(""):"<div style=\"padding:12px;color:#6d5961\">No item details saved.</div>";return `<div class="order"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap"><div><b>${esc(o.orderCode||"PRISHAA-ORDER")}</b><div style="font-size:13px;color:#6d5961;margin-top:4px">${esc(o.createdAt||"")}</div></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><select onchange="changeStatus(${o.id},this.value)">${["Pending","Confirmed","Packed","Shipped","Delivered","Cancelled"].map(status=>`<option ${status===o.status?"selected":""}>${status}</option>`).join("")}</select><button type="button" class="btn danger" onclick="deleteOrder(${o.id})">🗑 Delete Order</button></div></div><hr><div><b>Customer:</b> ${esc(o.customerName||"")}</div><div><b>Phone:</b> ${esc(o.phone||"")}</div><div style="margin-top:8px;padding:12px;border:1px solid #f0dfe6;border-radius:10px;background:#fff7fa"><b>Delivery Address:</b><br>${esc(o.address||"")}<br>${esc(o.city||"")}${o.city?", ":""}${esc(o.state||"")}${o.pincode?" - "+esc(o.pincode):""}</div><div style="margin-top:14px;font-weight:800">Ordered Items</div><div style="margin-top:8px;border:1px solid #eee;border-radius:10px;overflow:hidden">${itemsHtml}</div><div style="display:flex;justify-content:space-between;margin-top:14px;padding-top:12px;border-top:1px solid #e7dde2;font-size:18px"><span>Total Order Value</span><b>${money(o.total||0)}</b></div></div>`}).join(""):`<div class="order" style="text-align:center;padding:40px">No orders yet.</div>`}
+function showTab(id,b){document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));b.classList.add("active");$(id).classList.add("active")}
+function openForm(p=null){editingId=p?.id||null;$("title").textContent=editingId?"Edit Product":"Add Product";$("name").value=p?.name||"";$("category").value=p?.category||"Lehengas";$("price").value=p?.price??"";$("size").value=p?.size||"";$("length").value=p?.length||"";$("color").value=p?.color||"";$("occasion").value=p?.occasion||"";$("description").value=p?.description||"";$("imageFile").value="";$("preview").src=p?.image||"";$("preview").style.display=p?.image?"block":"none";$("imageFile").required=!editingId;$("modal").classList.add("open")}
+function editProduct(id){const p=products.find(x=>x.id===id);if(p)openForm(p)}
+function closeForm(){$("modal").classList.remove("open")}
+$("imageFile").addEventListener("change",function(){const f=this.files[0];if(!f)return;if(!f.type.startsWith("image/")){alert("Please select JPG/JPEG/PNG/WEBP.");this.value="";return}$('preview').src=URL.createObjectURL(f);$('preview').style.display='block'})
+async function compressImage(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{let w=img.width,h=img.height,max=1000;if(w>max){h=Math.round(h*max/w);w=max}const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);resolve(c.toDataURL('image/jpeg',0.72))};img.onerror=()=>reject(new Error('Could not read the image.'));img.src=r.result};r.onerror=()=>reject(new Error('Could not read the file.'));r.readAsDataURL(file)})}
+$("form").addEventListener("submit",async e=>{e.preventDefault();try{let image="";const f=$("imageFile").files[0];if(f)image=await compressImage(f);else if(editingId)image=products.find(p=>p.id===editingId)?.image||"";if(!image)throw new Error("Please select a product image.");const payload={name:$("name").value.trim(),category:$("category").value,price:Number($("price").value),size:$("size").value.trim(),length:$("length").value.trim(),color:$("color").value.trim(),occasion:$("occasion").value.trim(),image,description:$("description").value.trim()};await api(editingId?`/api/products/${editingId}`:"/api/products",{method:editingId?"PUT":"POST",body:JSON.stringify(payload)});closeForm();await load();alert("✅ Product saved successfully.")}catch(err){alert("❌ "+err.message)}})
+async function deleteProduct(id){if(!confirm("Delete this product?"))return;try{await api(`/api/products/${id}`,{method:"DELETE"});await load()}catch(e){alert("❌ "+e.message)}}
+async function changeStatus(id,status){try{await api(`/api/orders/${id}/status`,{method:"PUT",body:JSON.stringify({status})});await load()}catch(e){alert("❌ "+e.message)}}
+async function deleteOrder(id){const o=orders.find(x=>x.id===id);if(!o)return;if(!confirm("Delete this order permanently?\n\nOrder ID: "+o.orderCode+"\nCustomer: "+o.customerName+"\nTotal: "+money(o.total)))return;try{await api(`/api/orders/${id}`,{method:"DELETE"});await load()}catch(e){alert("❌ "+e.message)}}
+function openStore(){window.open('/user/','_blank')}
+function logoutAdmin(){
+  fetch("/admin/logout",{method:"POST",credentials:"same-origin"}).finally(()=>location.href="/admin/");
+}
+load().catch(e=>{$("ordersList").innerHTML=`<div class="order" style="color:#a22">Backend connection failed: ${esc(e.message)}</div>`});setInterval(()=>load().catch(()=>{}),5000)
+</script></body></html>
