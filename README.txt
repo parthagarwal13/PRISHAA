@@ -133,3 +133,5 @@ LATEST CATEGORY UPDATE: Renamed Watches to Accessories and added Co-ord Sets acr
 LATEST HERO UPDATE: Added the two supplied images as an automatic 4-second slideshow. Both images are pre-fitted to the hero frame; the portrait image uses a clean blurred background so the full outfit remains visible without distortion or cropping.
 
 LATEST HERO UPDATE: Replaced the first slideshow image with the newly uploaded hero photo. Second slide remains unchanged.
+
+MOBILE HERO FIX: On screens <=650px the hero uses a fixed aspect ratio and contain mode so the full New Arrival image stays visible without cropping.
