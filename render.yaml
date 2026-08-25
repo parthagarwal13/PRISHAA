@@ -10,4 +10,7 @@ services:
         sync: false
       - key: NODE_ENV
         value: production
+<<<<<<< HEAD
   healthCheckPath: /api/health
+=======
+>>>>>>> 12e577b83e451d44c97e8e9add6c7afd6aedfce2

@@ -218,8 +218,12 @@ app.use("/admin", requireAdmin, express.static(path.join(ROOT,"admin")));
 app.use("/user",express.static(path.join(ROOT,"user")));
 app.get("/",(_req,res)=>res.redirect("/user/"));
 app.use(express.static(ROOT));
+<<<<<<< HEAD
 if (!process.env.VERCEL) {
   app.listen(port,()=>console.log(`PRISHAA running on http://localhost:${port}`));
 }
 
 export default app;
+=======
+app.listen(port,()=>console.log(`PRISHAA running on http://localhost:${port}`));
+>>>>>>> 12e577b83e451d44c97e8e9add6c7afd6aedfce2

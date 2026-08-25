@@ -5,14 +5,24 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch backend/server.js",
+<<<<<<< HEAD
     "start": "node server.js",
     "seed": "node backend/seed.js",
     "check": "node backend/check-db.js",
     "vercel-build": "echo Vercel deployment ready"
+=======
+    "start": "node backend/server.js",
+    "seed": "node backend/seed.js",
+    "check": "node backend/check-db.js"
+>>>>>>> 12e577b83e451d44c97e8e9add6c7afd6aedfce2
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.0",
     "dotenv": "^16.4.7",
     "express": "^4.21.2"
   }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 12e577b83e451d44c97e8e9add6c7afd6aedfce2

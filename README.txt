@@ -116,6 +116,7 @@ LATEST UPDATE: Added an optional Length field to Admin Add/Edit Product. Leaving
 
 ADMIN AUTHENTICATION:
 Set ADMIN_PASSWORD and ADMIN_SESSION_SECRET in .env locally and in Render Environment Variables. The /admin/ page requires the password; admin API writes and order viewing are protected server-side.
+<<<<<<< HEAD
 
 
 LATEST FIX: Added automatic GET retries and a friendly startup state so the User/Admin pages recover automatically when the Render Free service is waking from idle instead of requiring a manual reload. POST/PUT/DELETE requests are not retried to avoid duplicates.
@@ -133,3 +134,5 @@ LATEST CATEGORY UPDATE: Renamed Watches to Accessories and added Co-ord Sets acr
 LATEST HERO UPDATE: Added the two supplied images as an automatic 4-second slideshow. Both images are pre-fitted to the hero frame; the portrait image uses a clean blurred background so the full outfit remains visible without distortion or cropping.
 
 LATEST HERO UPDATE: Replaced the first slideshow image with the newly uploaded hero photo. Second slide remains unchanged.
+=======
+>>>>>>> 12e577b83e451d44c97e8e9add6c7afd6aedfce2

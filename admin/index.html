@@ -266,6 +266,7 @@
 <section id="orders" class="panel active"><div class="head"><h2>Customer Orders</h2><button class="btn soft" onclick="load()">Refresh</button></div><div id="ordersList"></div></section>
 <section id="products" class="panel"><div class="head"><h2>Products</h2><button class="btn pink" onclick="openForm()">+ Add Product</button></div><div class="tablewrap"><table class="table"><thead><tr><th>Image</th><th>Product</th><th>Category</th><th>Price</th><th>Size</th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table></div></section>
 </main>
+<<<<<<< HEAD
 <div id="modal" class="modal"><div class="box"><button class="close" onclick="closeForm()">×</button><h2 id="title">Add Product</h2><form id="form" class="form"><input id="name" required placeholder="Product name"><select id="category">
 <option>Suits</option>
 <option>Lehengas</option>
@@ -274,11 +275,15 @@
 <option>Accessories</option>
 <option>Co-ord Sets</option>
 </select><input id="price" type="number" min="0" required placeholder="Price"><input id="size" placeholder="S, M, L, XL">
+=======
+<div id="modal" class="modal"><div class="box"><button class="close" onclick="closeForm()">×</button><h2 id="title">Add Product</h2><form id="form" class="form"><input id="name" required placeholder="Product name"><select id="category"><option>Suits</option><option>Lehengas</option></select><input id="price" type="number" min="0" required placeholder="Price"><input id="size" placeholder="S, M, L, XL">
+>>>>>>> 12e577b83e451d44c97e8e9add6c7afd6aedfce2
 <input id="length" placeholder="Length (optional, e.g. 42 in)"><input id="color" placeholder="Colour"><input id="occasion" placeholder="Occasion"><label><b>Product Image</b></label><input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp" required><div class="hint">PNG / JPG / JPEG / WEBP supported. No URL needed.</div><img id="preview" class="preview"><textarea id="description" placeholder="Description"></textarea><button class="btn pink">Save Product</button></form></div></div>
 
 <script>
 const $=id=>document.getElementById(id);const money=n=>"₹"+Number(n||0).toLocaleString("en-IN");const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));let products=[],orders=[],editingId=null;
 async function api(path,options={}){
+<<<<<<< HEAD
   const method=(options.method||"GET").toUpperCase();
   const maxAttempts=method==="GET"?6:1;
   let lastError=null;
@@ -323,6 +328,15 @@ async function load(){
     setTimeout(load,1500);
   }
 }
+=======
+  const r=await fetch(path,{cache:"no-store",credentials:"same-origin",...options,headers:{"Content-Type":"application/json",...(options.headers||{})}});
+  if(r.status===401){location.href="/admin/";throw new Error("Admin login required.");}
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(d.error||"Request failed");
+  return d
+}
+async function load(){orders=await api("/api/orders");products=await api("/api/products");$("s1").textContent=orders.length;$("s2").textContent=orders.filter(o=>o.status==="Pending").length;$("s3").textContent=money(orders.filter(o=>o.status!=="Cancelled").reduce((s,o)=>s+Number(o.total||0),0));$("s4").textContent=products.length;renderProducts();renderOrders()}
+>>>>>>> 12e577b83e451d44c97e8e9add6c7afd6aedfce2
 function renderProducts(){$("rows").innerHTML=products.map(p=>`<tr><td><img class="thumb" src="${esc(p.image)}" onerror="this.src='https://via.placeholder.com/100x120?text=PRISHAA'"></td><td><b>${esc(p.name)}</b><div>${esc(p.color||"")}</div></td><td>${esc(p.category)}</td><td>${money(p.price)}</td><td>${esc(p.size||"-")}${p.length?`<div style="font-size:12px;color:#6d5961;margin-top:3px">Length: ${esc(p.length)}</div>`:""}</td><td><button class="btn soft" onclick="editProduct(${p.id})">Edit</button> <button class="btn danger" onclick="deleteProduct(${p.id})">Delete</button></td></tr>`).join("")}
 function renderOrders(){const a=orders;$("ordersList").innerHTML=a.length?a.map(o=>{const items=Array.isArray(o.items)?o.items:[];const itemsHtml=items.length?items.map(i=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:10px 12px;border-bottom:1px solid #eee"><div><b>${esc(i.productName||"Product")}</b><div style="font-size:13px;color:#6d5961">Qty: ${Number(i.quantity||1)} × ${money(i.price||0)}</div></div><b>${money(Number(i.price||0)*Number(i.quantity||1))}</b></div>`).join(""):"<div style=\"padding:12px;color:#6d5961\">No item details saved.</div>";return `<div class="order"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap"><div><b>${esc(o.orderCode||"PRISHAA-ORDER")}</b><div style="font-size:13px;color:#6d5961;margin-top:4px">${esc(o.createdAt||"")}</div></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><select onchange="changeStatus(${o.id},this.value)">${["Pending","Confirmed","Packed","Shipped","Delivered","Cancelled"].map(status=>`<option ${status===o.status?"selected":""}>${status}</option>`).join("")}</select><button type="button" class="btn danger" onclick="deleteOrder(${o.id})">🗑 Delete Order</button></div></div><hr><div><b>Customer:</b> ${esc(o.customerName||"")}</div><div><b>Phone:</b> ${esc(o.phone||"")}</div><div style="margin-top:8px;padding:12px;border:1px solid #f0dfe6;border-radius:10px;background:#fff7fa"><b>Delivery Address:</b><br>${esc(o.address||"")}<br>${esc(o.city||"")}${o.city?", ":""}${esc(o.state||"")}${o.pincode?" - "+esc(o.pincode):""}</div><div style="margin-top:14px;font-weight:800">Ordered Items</div><div style="margin-top:8px;border:1px solid #eee;border-radius:10px;overflow:hidden">${itemsHtml}</div><div style="display:flex;justify-content:space-between;margin-top:14px;padding-top:12px;border-top:1px solid #e7dde2;font-size:18px"><span>Total Order Value</span><b>${money(o.total||0)}</b></div></div>`}).join(""):`<div class="order" style="text-align:center;padding:40px">No orders yet.</div>`}
 function showTab(id,b){document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));b.classList.add("active");$(id).classList.add("active")}
