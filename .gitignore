@@ -4,7 +4,4 @@ node_modules/
 !.env.example
 npm-debug.log*
 .DS_Store
-<<<<<<< HEAD
 node_modules
-=======
->>>>>>> 12e577b83e451d44c97e8e9add6c7afd6aedfce2
