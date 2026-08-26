@@ -4,6 +4,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import { Pool } from "@neondatabase/serverless";
+import multer from "multer";
+import { v2 as cloudinary } from "cloudinary";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -77,6 +79,17 @@ const port = Number(process.env.PORT || 8787);
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 app.use(express.json({ limit: "15mb" }));
 
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }
+});
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
 const normalizeProduct = row => ({
   id: Number(row.id), name: row.name, category: row.category,
   price: Number(row.price), size: row.size || "", length: row.length || "",
@@ -137,6 +150,42 @@ app.post("/admin/logout", (req, res) => {
 app.get("/api/health", async (_req,res)=>{
   try { await pool.query("SELECT 1"); res.json({ok:true,database:"connected"}); }
   catch(e){ res.status(500).json({ok:false,error:e.message}); }
+});
+
+app.post("/api/upload-image", requireAdmin, upload.single("image"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No image uploaded." });
+    }
+
+    if (!req.file.mimetype.startsWith("image/")) {
+      return res.status(400).json({ error: "Only image files are allowed." });
+    }
+
+    const result = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder: "prishaa/products",
+          resource_type: "image"
+        },
+        (error, uploaded) => {
+          if (error) reject(error);
+          else resolve(uploaded);
+        }
+      );
+
+      stream.end(req.file.buffer);
+    });
+
+    return res.json({
+      success: true,
+      url: result.secure_url,
+      public_id: result.public_id
+    });
+  } catch (e) {
+    console.error("Cloudinary upload error:", e);
+    return res.status(500).json({ error: e.message || "Image upload failed." });
+  }
 });
 
 app.get("/api/products", async (_req,res)=>{ try{res.json(await listProducts())}catch(e){res.status(500).json({error:e.message})} });

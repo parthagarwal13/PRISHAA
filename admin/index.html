@@ -274,7 +274,7 @@
 <option>Accessories</option>
 <option>Co-ord Sets</option>
 </select><input id="price" type="number" min="0" required placeholder="Price"><input id="size" placeholder="S, M, L, XL">
-<input id="length" placeholder="Length (optional, e.g. 42 in)"><input id="color" placeholder="Colour"><input id="occasion" placeholder="Occasion"><label><b>Product Image</b></label><input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp" required><div class="hint">PNG / JPG / JPEG / WEBP supported. No URL needed.</div><img id="preview" class="preview"><textarea id="description" placeholder="Description"></textarea><button class="btn pink">Save Product</button></form></div></div>
+<input id="length" placeholder="Length (optional, e.g. 42 in)"><input id="color" placeholder="Colour"><input id="occasion" placeholder="Occasion"><label><b>Product Image</b></label><input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp" required><div class="hint">PNG / JPG / JPEG / WEBP supported. Images are uploaded securely to Cloudinary.</div><img id="preview" class="preview"><textarea id="description" placeholder="Description"></textarea><button class="btn pink">Save Product</button></form></div></div>
 
 <script>
 const $=id=>document.getElementById(id);const money=n=>"₹"+Number(n||0).toLocaleString("en-IN");const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));let products=[],orders=[],editingId=null;
@@ -331,7 +331,73 @@ function editProduct(id){const p=products.find(x=>x.id===id);if(p)openForm(p)}
 function closeForm(){$("modal").classList.remove("open")}
 $("imageFile").addEventListener("change",function(){const f=this.files[0];if(!f)return;if(!f.type.startsWith("image/")){alert("Please select JPG/JPEG/PNG/WEBP.");this.value="";return}$('preview').src=URL.createObjectURL(f);$('preview').style.display='block'})
 async function compressImage(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{let w=img.width,h=img.height,max=1000;if(w>max){h=Math.round(h*max/w);w=max}const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);resolve(c.toDataURL('image/jpeg',0.72))};img.onerror=()=>reject(new Error('Could not read the image.'));img.src=r.result};r.onerror=()=>reject(new Error('Could not read the file.'));r.readAsDataURL(file)})}
-$("form").addEventListener("submit",async e=>{e.preventDefault();try{let image="";const f=$("imageFile").files[0];if(f)image=await compressImage(f);else if(editingId)image=products.find(p=>p.id===editingId)?.image||"";if(!image)throw new Error("Please select a product image.");const payload={name:$("name").value.trim(),category:$("category").value,price:Number($("price").value),size:$("size").value.trim(),length:$("length").value.trim(),color:$("color").value.trim(),occasion:$("occasion").value.trim(),image,description:$("description").value.trim()};await api(editingId?`/api/products/${editingId}`:"/api/products",{method:editingId?"PUT":"POST",body:JSON.stringify(payload)});closeForm();await load();alert("✅ Product saved successfully.")}catch(err){alert("❌ "+err.message)}})
+async function uploadImageToCloudinary(file){
+  const fd = new FormData();
+  fd.append("image", file);
+
+  const r = await fetch("/api/upload-image", {
+    method: "POST",
+    credentials: "same-origin",
+    body: fd
+  });
+
+  const text = await r.text();
+  let data = {};
+  try { data = JSON.parse(text); } catch {}
+
+  if (!r.ok) {
+    throw new Error(data.error || text || "Image upload failed.");
+  }
+
+  if (!data.url) {
+    throw new Error("Cloudinary did not return an image URL.");
+  }
+
+  return data.url;
+}
+
+$("form").addEventListener("submit",async e=>{
+  e.preventDefault();
+
+  try{
+    const f = $("imageFile").files[0];
+    let image = "";
+
+    if(f){
+      image = await uploadImageToCloudinary(f);
+    }else if(editingId){
+      image = products.find(p=>p.id===editingId)?.image || "";
+    }
+
+    if(!image) throw new Error("Please select a product image.");
+
+    const payload = {
+      name: $("name").value.trim(),
+      category: $("category").value,
+      price: Number($("price").value),
+      size: $("size").value.trim(),
+      length: $("length").value.trim(),
+      color: $("color").value.trim(),
+      occasion: $("occasion").value.trim(),
+      image,
+      description: $("description").value.trim()
+    };
+
+    await api(
+      editingId ? `/api/products/${editingId}` : "/api/products",
+      {
+        method: editingId ? "PUT" : "POST",
+        body: JSON.stringify(payload)
+      }
+    );
+
+    closeForm();
+    await load();
+    alert("✅ Product saved successfully.");
+  }catch(err){
+    alert("❌ " + err.message);
+  }
+})
 async function deleteProduct(id){if(!confirm("Delete this product?"))return;try{await api(`/api/products/${id}`,{method:"DELETE"});await load()}catch(e){alert("❌ "+e.message)}}
 async function changeStatus(id,status){try{await api(`/api/orders/${id}/status`,{method:"PUT",body:JSON.stringify({status})});await load()}catch(e){alert("❌ "+e.message)}}
 async function deleteOrder(id){const o=orders.find(x=>x.id===id);if(!o)return;if(!confirm("Delete this order permanently?\n\nOrder ID: "+o.orderCode+"\nCustomer: "+o.customerName+"\nTotal: "+money(o.total)))return;try{await api(`/api/orders/${id}`,{method:"DELETE"});await load()}catch(e){alert("❌ "+e.message)}}

@@ -1,0 +1,18 @@
+PRISHAA Cloudinary image storage
+
+1) Install dependencies:
+   npm install
+
+2) Add these to the root .env:
+   CLOUDINARY_CLOUD_NAME=...
+   CLOUDINARY_API_KEY=...
+   CLOUDINARY_API_SECRET=...
+
+3) Keep DATABASE_URL as your Neon PostgreSQL URL.
+
+4) Admin -> Add Product -> choose image.
+   The admin page uploads the image to /api/upload-image,
+   the backend sends it to Cloudinary, and the resulting secure URL
+   is saved in Neon as products.image_url.
+
+Never commit the real .env or Cloudinary API secret.
