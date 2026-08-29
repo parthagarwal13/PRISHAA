@@ -261,7 +261,7 @@ app.get("/api/orders", requireAdmin, async (_req,res)=>{try{res.json(await listO
 app.post("/api/payment/create-order", async (req, res) => {
   try {
     await dbReady;
-    if (!razorpay) {
+    if (!razorpay || !RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
       return res.status(503).json({ error: "Online payment is not configured on the server yet." });
     }
 
@@ -277,34 +277,48 @@ app.post("/api/payment/create-order", async (req, res) => {
     for (const raw of items) {
       const qty = Math.max(1, Number(raw.quantity || 1));
       const pid = Number(raw.productId);
-      if (!Number.isInteger(pid) || qty > 99) throw new Error("Invalid cart item.");
+      if (!Number.isInteger(pid) || !Number.isInteger(qty) || qty < 1 || qty > 99) {
+        return res.status(400).json({ error: "Invalid cart item." });
+      }
       const r = await pool.query("SELECT id,name,price FROM products WHERE id=$1", [pid]);
-      if (!r.rowCount) throw new Error(`Product ${pid} not found.`);
+      if (!r.rowCount) return res.status(400).json({ error: `Product ${pid} not found.` });
       const p = r.rows[0];
       const price = Number(p.price);
+      if (!Number.isFinite(price) || price < 0) return res.status(400).json({ error: "Invalid product price." });
       total += price * qty;
       normalized.push({ productId: Number(p.id), productName: p.name, price, quantity: qty });
     }
 
-    if (!Number.isFinite(total) || total <= 0) {
-      return res.status(400).json({ error: "Invalid order total." });
+    const amountPaise = Math.round(total * 100);
+    if (!Number.isSafeInteger(amountPaise) || amountPaise < 100) {
+      return res.status(400).json({ error: "Order amount must be at least ₹1.00." });
     }
 
     const code = `PRISHAA-${Math.random().toString(36).slice(2,8).toUpperCase()}`;
-    const razorOrder = await razorpay.orders.create({
-      amount: Math.round(total * 100),
-      currency: "INR",
-      receipt: code,
-      notes: { source: "prishaa-web" },
-      payment_capture: 1
-    });
+    let razorOrder;
+    try {
+      razorOrder = await razorpay.orders.create({
+        amount: amountPaise,
+        currency: "INR",
+        receipt: code,
+        notes: { source: "prishaa-web" }
+      });
+    } catch (e) {
+      console.error("Razorpay create-order error:", e);
+      const status = Number(e?.statusCode || e?.status || (e?.error?.code === "BAD_REQUEST_ERROR" ? 400 : 500));
+      if (status === 401) {
+        return res.status(401).json({ error: "Razorpay authentication failed. Check RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET." });
+      }
+      return res.status(500).json({ error: e?.error?.description || e?.description || e?.message || "Unable to create Razorpay order." });
+    }
 
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
       const order = await client.query(
         `INSERT INTO orders(order_code,customer_name,phone,address,city,state,pincode,total,status,payment_status,razorpay_order_id)
-         VALUES($1,$2,$3,$4,$5,$6,$7,$8,'Pending','Payment Pending',$9) RETURNING id,order_code,total,status,payment_status`,
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,'Pending','Payment Pending',$9)
+         RETURNING id,order_code,total,status,payment_status`,
         [code,c.name.trim(),c.phone.trim(),c.address.trim(),c.city.trim(),c.state.trim(),c.pincode.trim(),total,razorOrder.id]
       );
       for (const item of normalized) {
@@ -319,7 +333,7 @@ app.post("/api/payment/create-order", async (req, res) => {
         razorpayOrderId: razorOrder.id,
         orderId: Number(order.rows[0].id),
         orderCode: code,
-        amount: Math.round(total * 100),
+        amount: amountPaise,
         currency: "INR",
         customer: { name: c.name.trim(), phone: c.phone.trim() }
       });
@@ -338,11 +352,13 @@ app.post("/api/payment/create-order", async (req, res) => {
 app.post("/api/payment/verify", async (req, res) => {
   try {
     await dbReady;
-    if (!RAZORPAY_KEY_SECRET) return res.status(503).json({ error: "Online payment is not configured on the server yet." });
+    if (!razorpay || !RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
+      return res.status(503).json({ error: "Online payment is not configured on the server yet." });
+    }
 
     const { orderId, razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body || {};
     if (!Number.isInteger(Number(orderId)) || !razorpay_payment_id || !razorpay_order_id || !razorpay_signature) {
-      return res.status(400).json({ error: "Incomplete payment verification data." });
+      return res.status(400).json({ error: "Missing payment verification fields." });
     }
 
     const local = await pool.query(
@@ -352,19 +368,21 @@ app.post("/api/payment/verify", async (req, res) => {
     if (!local.rowCount) return res.status(404).json({ error: "Order not found." });
 
     const saved = local.rows[0];
+    // IMPORTANT: signature must use the order_id generated/stored by the server.
     if (!saved.razorpay_order_id || saved.razorpay_order_id !== razorpay_order_id) {
       return res.status(400).json({ error: "Payment order mismatch." });
     }
 
-    const body = `${saved.razorpay_order_id}|${razorpay_payment_id}`;
-    const expected = crypto.createHmac("sha256", RAZORPAY_KEY_SECRET).update(body).digest("hex");
-    const a = Buffer.from(expected);
-    const b = Buffer.from(String(razorpay_signature));
-    if (a.length !== b.length || !crypto.timingSafeEqual(a,b)) {
+    const payload = `${saved.razorpay_order_id}|${razorpay_payment_id}`;
+    const expected = crypto.createHmac("sha256", RAZORPAY_KEY_SECRET).update(payload).digest("hex");
+    const received = String(razorpay_signature);
+    const a = Buffer.from(expected, "utf8");
+    const b = Buffer.from(received, "utf8");
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
       return res.status(400).json({ error: "Payment verification failed." });
     }
 
-    // Optional extra check against Razorpay's server-side payment record.
+    // Confirm the payment belongs to the same Razorpay order and is captured before marking Paid.
     const payment = await razorpay.payments.fetch(razorpay_payment_id);
     if (payment.order_id !== saved.razorpay_order_id) {
       return res.status(400).json({ error: "Payment order mismatch." });
@@ -374,7 +392,9 @@ app.post("/api/payment/verify", async (req, res) => {
     }
 
     await pool.query(
-      `UPDATE orders SET payment_status='Paid', razorpay_payment_id=$1, razorpay_signature=$2, paid_at=NOW(), status='Confirmed' WHERE id=$3`,
+      `UPDATE orders
+       SET payment_status='Paid', razorpay_payment_id=$1, razorpay_signature=$2, paid_at=NOW(), status='Confirmed'
+       WHERE id=$3`,
       [razorpay_payment_id, razorpay_signature, Number(orderId)]
     );
 

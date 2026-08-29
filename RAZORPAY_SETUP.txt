@@ -1,13 +1,25 @@
-PRISHAA Razorpay Payment Setup
+PRISHAA Razorpay Standard Web Checkout
 
+Already integrated in the codebase:
+- POST /api/payment/create-order
+- POST /api/payment/verify
+- POST /api/payment/failed
+- Standard Checkout script on user page
+- Server-side HMAC-SHA256 signature verification
+- Server-side Razorpay payment-status check before marking the Neon order Paid
+- Minimum order amount validation of ₹1.00 (100 paise)
+
+Local setup:
 1. Run: npm install
-2. Add these to .env (local) and Vercel/Render environment variables:
-   RAZORPAY_KEY_ID=rzp_test_TVWogw3wPYZbog
-   RAZORPAY_KEY_SECRET=DEEvfn4atFv08IIkGz3JKEvw
-   RAZORPAY_WEBHOOK_SECRET=... (optional for now)
+2. Create root .env (do NOT commit it) and add:
+   RAZORPAY_KEY_ID=rzp_test_...
+   RAZORPAY_KEY_SECRET=...
+   RAZORPAY_WEBHOOK_SECRET=...
 3. Keep DATABASE_URL pointing to your Neon PostgreSQL database.
-4. The customer checkout creates a Razorpay order on the server, opens Razorpay Checkout, verifies the signature on the server, and only then marks the Neon order Paid/Confirmed.
-5. Never put RAZORPAY_KEY_SECRET in frontend code or commit .env to GitHub.
-6. For live payments, complete Razorpay account/KYC setup and use HTTPS.
+4. Run: npm start
+5. Open the site, add a product to cart, open checkout, and click Pay Securely Online.
 
-This build keeps your Neon PostgreSQL database and Cloudinary image storage.
+Production:
+- Add the same environment variables in Vercel/Render.
+- Use Live Mode keys only after Razorpay onboarding/KYC and final testing.
+- Do not put RAZORPAY_KEY_SECRET in frontend code or GitHub.
