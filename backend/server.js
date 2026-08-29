@@ -77,6 +77,7 @@ function requireAdmin(req, res, next) {
 const app = express();
 const port = Number(process.env.PORT || 8787);
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
 app.use(express.json({ limit: "15mb" }));
 
 const upload = multer({
@@ -92,13 +93,13 @@ cloudinary.config({
 
 const normalizeProduct = row => ({
   id: Number(row.id), name: row.name, category: row.category,
-  price: Number(row.price), size: row.size || "", length: row.length || "",
+  price: Number(row.price), originalPrice: Number(row.original_price ?? row.price), offerActive: !!row.offer_active, offerPercent: Number(row.offer_percent || 0), offerPrice: row.offer_price != null ? Number(row.offer_price) : null, size: row.size || "", length: row.length || "",
   color: row.color || "", occasion: row.occasion || "", image: row.image_url,
   description: row.description || "", createdAt: row.created_at
 });
 
 async function listProducts(){
-  const r = await pool.query("SELECT id,name,category,price,size,length,color,occasion,image_url,description,created_at FROM products ORDER BY created_at DESC,id DESC");
+  const r = await pool.query("SELECT id,name,category,price,original_price,offer_active,offer_percent,offer_price,size,length,color,occasion,image_url,description,created_at FROM products ORDER BY created_at DESC,id DESC");
   return r.rows.map(normalizeProduct);
 }
 
@@ -196,24 +197,89 @@ app.post("/api/products", requireAdmin, async (req,res)=>{
     if(!p.name?.trim()) return res.status(400).json({error:"Product name is required."});
     if(Number.isNaN(Number(p.price))||Number(p.price)<0) return res.status(400).json({error:"Enter a valid price."});
     if(!p.image?.trim()) return res.status(400).json({error:"Please select a product image."});
-    const r=await pool.query(`INSERT INTO products(name,category,price,size,length,color,occasion,image_url,description) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id,name,category,price,size,length,color,occasion,image_url,description,created_at`,[
-      p.name.trim(),p.category||"Suits",Number(p.price),p.size?.trim()||"",p.length?.trim()||"",p.color?.trim()||"",p.occasion?.trim()||"",p.image.trim(),p.description?.trim()||""
-    ]);
+
+    const originalPrice = Number(p.originalPrice ?? p.price);
+    const offerActive = !!p.offerActive;
+    const offerPercent = Math.max(0, Math.min(100, Number(p.offerPercent || 0)));
+    const manualOfferPrice = p.offerPrice == null || p.offerPrice === "" ? null : Number(p.offerPrice);
+
+    if(Number.isNaN(originalPrice) || originalPrice < 0){
+      return res.status(400).json({error:"Enter a valid original price."});
+    }
+
+    let offerPrice = manualOfferPrice;
+    if(offerActive){
+      if(offerPrice == null){
+        offerPrice = Math.max(0, originalPrice - (originalPrice * offerPercent / 100));
+      }
+      if(Number.isNaN(offerPrice) || offerPrice < 0 || offerPrice > originalPrice){
+        return res.status(400).json({error:"Offer price must be between ₹0 and the original price."});
+      }
+    }else{
+      offerPrice = null;
+    }
+
+    const sellingPrice = offerActive ? offerPrice : originalPrice;
+
+    const r=await pool.query(
+      `INSERT INTO products(name,category,price,original_price,offer_active,offer_percent,offer_price,size,length,color,occasion,image_url,description)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+       RETURNING id,name,category,price,original_price,offer_active,offer_percent,offer_price,size,length,color,occasion,image_url,description,created_at`,
+      [
+        p.name.trim(), p.category||"Suits", sellingPrice, originalPrice, offerActive,
+        offerPercent, offerPrice, p.size?.trim()||"", p.length?.trim()||"",
+        p.color?.trim()||"", p.occasion?.trim()||"", p.image.trim(), p.description?.trim()||""
+      ]
+    );
     res.status(201).json(normalizeProduct(r.rows[0]));
   }catch(e){res.status(500).json({error:e.message})}
 });
 
 app.put("/api/products/:id", requireAdmin, async (req,res)=>{
   try{
-    const id=Number(req.params.id),p=req.body||{};
+    const id=Number(req.params.id), p=req.body||{};
     if(!p.name?.trim()) return res.status(400).json({error:"Product name is required."});
     if(Number.isNaN(Number(p.price))||Number(p.price)<0) return res.status(400).json({error:"Enter a valid price."});
-    const old=await pool.query("SELECT image_url FROM products WHERE id=$1",[id]);
+
+    const old=await pool.query("SELECT * FROM products WHERE id=$1",[id]);
     if(!old.rowCount) return res.status(404).json({error:"Product not found."});
-    const image=p.image?.trim()||old.rows[0].image_url;
-    const r=await pool.query(`UPDATE products SET name=$1,category=$2,price=$3,size=$4,length=$5,color=$6,occasion=$7,image_url=$8,description=$9 WHERE id=$10 RETURNING id,name,category,price,size,length,color,occasion,image_url,description,created_at`,[
-      p.name.trim(),p.category||"Suits",Number(p.price),p.size?.trim()||"",p.length?.trim()||"",p.color?.trim()||"",p.occasion?.trim()||"",image,p.description?.trim()||"",id
-    ]);
+
+    const originalPrice = Number(p.originalPrice ?? old.rows[0].original_price ?? p.price);
+    const offerActive = !!p.offerActive;
+    const offerPercent = Math.max(0, Math.min(100, Number(p.offerPercent || 0)));
+    const manualOfferPrice = p.offerPrice == null || p.offerPrice === "" ? null : Number(p.offerPrice);
+
+    if(Number.isNaN(originalPrice) || originalPrice < 0){
+      return res.status(400).json({error:"Enter a valid original price."});
+    }
+
+    let offerPrice = manualOfferPrice;
+    if(offerActive){
+      if(offerPrice == null){
+        offerPrice = Math.max(0, originalPrice - (originalPrice * offerPercent / 100));
+      }
+      if(Number.isNaN(offerPrice) || offerPrice < 0 || offerPrice > originalPrice){
+        return res.status(400).json({error:"Offer price must be between ₹0 and the original price."});
+      }
+    }else{
+      offerPrice = null;
+    }
+
+    const sellingPrice = offerActive ? offerPrice : originalPrice;
+    const image = p.image?.trim() || old.rows[0].image_url;
+
+    const r=await pool.query(
+      `UPDATE products
+       SET name=$1,category=$2,price=$3,original_price=$4,offer_active=$5,offer_percent=$6,offer_price=$7,
+           size=$8,length=$9,color=$10,occasion=$11,image_url=$12,description=$13
+       WHERE id=$14
+       RETURNING id,name,category,price,original_price,offer_active,offer_percent,offer_price,size,length,color,occasion,image_url,description,created_at`,
+      [
+        p.name.trim(), p.category||"Suits", sellingPrice, originalPrice, offerActive, offerPercent, offerPrice,
+        p.size?.trim()||"", p.length?.trim()||"", p.color?.trim()||"",
+        p.occasion?.trim()||"", image, p.description?.trim()||"", id
+      ]
+    );
     res.json(normalizeProduct(r.rows[0]));
   }catch(e){res.status(500).json({error:e.message})}
 });
@@ -235,18 +301,21 @@ app.post("/api/orders", async (req,res)=>{
   const client=await pool.connect();
   try{
     await client.query("BEGIN");
-    let total=0, normalized=[];
+    let subtotal=0, normalized=[];
     for(const raw of items){
       const qty=Math.max(1,Number(raw.quantity||1)),pid=Number(raw.productId);
       const r=await client.query("SELECT id,name,price FROM products WHERE id=$1",[pid]);
       if(!r.rowCount) throw new Error(`Product ${pid} not found.`);
-      const p=r.rows[0],price=Number(p.price); total+=price*qty;
+      const p=r.rows[0],price=Number(p.price); subtotal+=price*qty;
       normalized.push({productId:Number(p.id),productName:p.name,price,quantity:qty});
     }
+
+    const total=subtotal;
     const code=`PRISHAA-${Math.random().toString(36).slice(2,8).toUpperCase()}`;
     const order=await client.query(`INSERT INTO orders(order_code,customer_name,phone,address,city,state,pincode,total,status) VALUES($1,$2,$3,$4,$5,$6,$7,$8,'Pending') RETURNING id`,[code,c.name.trim(),c.phone.trim(),c.address.trim(),c.city.trim(),c.state.trim(),c.pincode.trim(),total]);
     for(const item of normalized) await client.query("INSERT INTO order_items(order_id,product_id,product_name,price,quantity) VALUES($1,$2,$3,$4,$5)",[Number(order.rows[0].id),item.productId,item.productName,item.price,item.quantity]);
-    await client.query("COMMIT"); res.status(201).json({success:true,orderCode:code,total});
+    await client.query("COMMIT");
+    res.status(201).json({success:true,orderCode:code,subtotal,discount,total,coupon:appliedCoupon});
   }catch(e){await client.query("ROLLBACK");res.status(500).json({error:e.message})}finally{client.release()}
 });
 

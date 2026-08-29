@@ -135,3 +135,9 @@ LATEST HERO UPDATE: Added the two supplied images as an automatic 4-second slide
 LATEST HERO UPDATE: Replaced the first slideshow image with the newly uploaded hero photo. Second slide remains unchanged.
 
 MOBILE HERO FIX: On screens <=650px the hero uses a fixed aspect ratio and contain mode so the full New Arrival image stays visible without cropping.
+
+Offer included: Flat 20% OFF with code PRISHAA20 on orders of ₹999+; maximum discount ₹500. Offer is validated on the backend.
+
+PRODUCT OFFERS: Added per-product Offer Active, Original Price, Offer %, and Offer Price. Run backend/migrations/add_product_offers.sql once in the Neon SQL editor before using the fields.
+
+LATEST OFFER UPDATE: Removed the global 20% PRISHAA20 promotional/coupon banner and coupon checkout logic. Offers are now controlled only per product from Admin using Enable Offer, Original Price, Offer %, and Offer Price.
