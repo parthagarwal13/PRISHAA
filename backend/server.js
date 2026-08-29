@@ -92,13 +92,13 @@ cloudinary.config({
 
 const normalizeProduct = row => ({
   id: Number(row.id), name: row.name, category: row.category,
-  price: Number(row.price), size: row.size || "", length: row.length || "",
+  price: Number(row.price), originalPrice: Number(row.original_price ?? row.price), offerActive: !!row.offer_active, offerPercent: Number(row.offer_percent || 0), offerPrice: row.offer_price != null ? Number(row.offer_price) : null, size: row.size || "", length: row.length || "",
   color: row.color || "", occasion: row.occasion || "", image: row.image_url,
   description: row.description || "", createdAt: row.created_at
 });
 
 async function listProducts(){
-  const r = await pool.query("SELECT id,name,category,price,size,length,color,occasion,image_url,description,created_at FROM products ORDER BY created_at DESC,id DESC");
+  const r = await pool.query("SELECT id,name,category,price,original_price,offer_active,offer_percent,offer_price,size,length,color,occasion,image_url,description,created_at FROM products ORDER BY created_at DESC,id DESC");
   return r.rows.map(normalizeProduct);
 }
 
@@ -194,11 +194,34 @@ app.post("/api/products", requireAdmin, async (req,res)=>{
   try{
     const p=req.body||{};
     if(!p.name?.trim()) return res.status(400).json({error:"Product name is required."});
-    if(Number.isNaN(Number(p.price))||Number(p.price)<0) return res.status(400).json({error:"Enter a valid price."});
     if(!p.image?.trim()) return res.status(400).json({error:"Please select a product image."});
-    const r=await pool.query(`INSERT INTO products(name,category,price,size,length,color,occasion,image_url,description) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id,name,category,price,size,length,color,occasion,image_url,description,created_at`,[
-      p.name.trim(),p.category||"Suits",Number(p.price),p.size?.trim()||"",p.length?.trim()||"",p.color?.trim()||"",p.occasion?.trim()||"",p.image.trim(),p.description?.trim()||""
-    ]);
+
+    const originalPrice=Number(p.originalPrice ?? p.price);
+    const offerActive=!!p.offerActive;
+    const offerPercent=Math.max(0,Math.min(100,Number(p.offerPercent||0)));
+    let offerPrice=(p.offerPrice===""||p.offerPrice==null)?null:Number(p.offerPrice);
+
+    if(!Number.isFinite(originalPrice)||originalPrice<0)
+      return res.status(400).json({error:"Enter a valid original price."});
+
+    if(offerActive){
+      if(offerPrice==null && offerPercent>0)
+        offerPrice=Math.max(0,originalPrice-(originalPrice*offerPercent/100));
+      if(offerPrice==null) offerPrice=originalPrice;
+      if(!Number.isFinite(offerPrice)||offerPrice<0||offerPrice>originalPrice)
+        return res.status(400).json({error:"Offer price must be between ₹0 and the original price."});
+    }else{
+      offerPrice=null;
+    }
+
+    const sellingPrice=offerActive?offerPrice:originalPrice;
+
+    const r=await pool.query(
+      `INSERT INTO products(name,category,price,original_price,offer_active,offer_percent,offer_price,size,length,color,occasion,image_url,description)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+       RETURNING id,name,category,price,original_price,offer_active,offer_percent,offer_price,size,length,color,occasion,image_url,description,created_at`,
+      [p.name.trim(),p.category||"Lehengas",sellingPrice,originalPrice,offerActive,offerPercent,offerPrice,p.size?.trim()||"",p.length?.trim()||"",p.color?.trim()||"",p.occasion?.trim()||"",p.image.trim(),p.description?.trim()||""]
+    );
     res.status(201).json(normalizeProduct(r.rows[0]));
   }catch(e){res.status(500).json({error:e.message})}
 });
@@ -207,13 +230,37 @@ app.put("/api/products/:id", requireAdmin, async (req,res)=>{
   try{
     const id=Number(req.params.id),p=req.body||{};
     if(!p.name?.trim()) return res.status(400).json({error:"Product name is required."});
-    if(Number.isNaN(Number(p.price))||Number(p.price)<0) return res.status(400).json({error:"Enter a valid price."});
-    const old=await pool.query("SELECT image_url FROM products WHERE id=$1",[id]);
+
+    const old=await pool.query("SELECT * FROM products WHERE id=$1",[id]);
     if(!old.rowCount) return res.status(404).json({error:"Product not found."});
+
+    const originalPrice=Number(p.originalPrice ?? old.rows[0].original_price ?? p.price);
+    const offerActive=!!p.offerActive;
+    const offerPercent=Math.max(0,Math.min(100,Number(p.offerPercent||0)));
+    let offerPrice=(p.offerPrice===""||p.offerPrice==null)?null:Number(p.offerPrice);
+
+    if(!Number.isFinite(originalPrice)||originalPrice<0)
+      return res.status(400).json({error:"Enter a valid original price."});
+
+    if(offerActive){
+      if(offerPrice==null && offerPercent>0)
+        offerPrice=Math.max(0,originalPrice-(originalPrice*offerPercent/100));
+      if(offerPrice==null) offerPrice=originalPrice;
+      if(!Number.isFinite(offerPrice)||offerPrice<0||offerPrice>originalPrice)
+        return res.status(400).json({error:"Offer price must be between ₹0 and the original price."});
+    }else{
+      offerPrice=null;
+    }
+
+    const sellingPrice=offerActive?offerPrice:originalPrice;
     const image=p.image?.trim()||old.rows[0].image_url;
-    const r=await pool.query(`UPDATE products SET name=$1,category=$2,price=$3,size=$4,length=$5,color=$6,occasion=$7,image_url=$8,description=$9 WHERE id=$10 RETURNING id,name,category,price,size,length,color,occasion,image_url,description,created_at`,[
-      p.name.trim(),p.category||"Suits",Number(p.price),p.size?.trim()||"",p.length?.trim()||"",p.color?.trim()||"",p.occasion?.trim()||"",image,p.description?.trim()||"",id
-    ]);
+
+    const r=await pool.query(
+      `UPDATE products SET name=$1,category=$2,price=$3,original_price=$4,offer_active=$5,offer_percent=$6,offer_price=$7,size=$8,length=$9,color=$10,occasion=$11,image_url=$12,description=$13
+       WHERE id=$14
+       RETURNING id,name,category,price,original_price,offer_active,offer_percent,offer_price,size,length,color,occasion,image_url,description,created_at`,
+      [p.name.trim(),p.category||"Lehengas",sellingPrice,originalPrice,offerActive,offerPercent,offerPrice,p.size?.trim()||"",p.length?.trim()||"",p.color?.trim()||"",p.occasion?.trim()||"",image,p.description?.trim()||"",id]
+    );
     res.json(normalizeProduct(r.rows[0]));
   }catch(e){res.status(500).json({error:e.message})}
 });

@@ -316,6 +316,11 @@ html,body{max-width:100%;overflow-x:hidden}
   }
 }
 
+
+.offer-price-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.offer-original-price{text-decoration:line-through;color:#9a8a91;font-size:14px;font-weight:600}
+.offer-current-price{color:#b23f6f;font-size:20px;font-weight:800}
+.offer-discount-badge{display:inline-block;background:#b23f6f;color:#fff;font-size:10px;font-weight:800;padding:4px 7px;border-radius:999px}
 </style></head><body>
 <nav><div class="logo"><div>PRISHAA</div><small>WOMEN'S COLLECTION</small></div><div> <button class="btn pink" onclick="openCart()">Cart (<span id="count">0</span>)</button></div></nav>
 <section class="hero"><div><h1><span class="premium-tagline">Let your elegance speak for you</span></h1><p>Shop stylish suits and stunning lehengas for festive, party and wedding occasions.</p><button class="btn pink" onclick="document.getElementById('collection').scrollIntoView({behavior:'smooth'})">Shop Collection</button></div><div class="hero-slideshow" aria-label="PRISHAA featured collection">
@@ -404,6 +409,14 @@ html,body{max-width:100%;overflow-x:hidden}
 const $=id=>document.getElementById(id);
 const money=n=>"₹"+Number(n||0).toLocaleString("en-IN");
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+function productPriceHTML(p){
+  if(p?.offerActive && p.offerPrice!=null){
+    const original=p.originalPrice??p.price;
+    const off=p.offerPercent?`<span class="offer-discount-badge">${p.offerPercent}% OFF</span>`:"";
+    return `<div class="offer-price-row"><span class="offer-original-price">₹${Number(original).toLocaleString("en-IN")}</span><span class="offer-current-price">₹${Number(p.offerPrice).toLocaleString("en-IN")}</span>${off}</div>`;
+  }
+  return `₹${Number(p?.price||0).toLocaleString("en-IN")}`;
+}
 let products=[],category="All",cart=JSON.parse(localStorage.getItem("PRISHAA_CART")||"[]");
 async function api(path,options={}){
   const method=(options.method||"GET").toUpperCase();
@@ -446,7 +459,7 @@ async function loadProducts(){
     setTimeout(loadProducts,1500);
   }
 }
-function render(){const q=$("search").value.trim().toLowerCase();const list=products.filter(p=>(category==="All"||p.category===category)&&(!q||(p.name+" "+p.category+" "+p.color+" "+p.occasion).toLowerCase().includes(q)));$("grid").innerHTML=list.map(p=>`<article class="card"><img src="${esc(p.image)}" alt="${esc(p.name)}" onerror="this.src='https://via.placeholder.com/700x800?text=PRISHAA'"><div class="body"><div class="tag">${esc(p.category)}</div><h3>${esc(p.name)}</h3><div>${esc(p.color||"")}</div><div class="price">${money(p.price)}</div><button class="view" onclick="showProduct(${p.id})">View Details</button><button class="add" onclick="addToCart(${p.id})">Add to Cart</button></div></article>`).join("")||'<div style="grid-column:1/-1;text-align:center;padding:50px">No products found.</div>'}
+function render(){const q=$("search").value.trim().toLowerCase();const list=products.filter(p=>(category==="All"||p.category===category)&&(!q||(p.name+" "+p.category+" "+p.color+" "+p.occasion).toLowerCase().includes(q)));$("grid").innerHTML=list.map(p=>`<article class="card"><img src="${esc(p.image)}" alt="${esc(p.name)}" onerror="this.src='https://via.placeholder.com/700x800?text=PRISHAA'"><div class="body"><div class="tag">${esc(p.category)}</div><h3>${esc(p.name)}</h3><div>${esc(p.color||"")}</div><div class="price">${productPriceHTML(p)}</div><button class="view" onclick="showProduct(${p.id})">View Details</button><button class="add" onclick="addToCart(${p.id})">Add to Cart</button></div></article>`).join("")||'<div style="grid-column:1/-1;text-align:center;padding:50px">No products found.</div>'}
 function setCat(c,b){category=c;document.querySelectorAll(".filter").forEach(x=>x.classList.remove("active"));b.classList.add("active");render()}
 function showProduct(id){const p=products.find(x=>x.id===id);if(!p)return;closeAll();$("dimg").src=p.image;$("dcat").textContent=p.category;$("dname").textContent=p.name;$("dprice").textContent=money(p.price);$("ddesc").textContent=p.description;$("dsize").textContent=p.size||"";$("dlength").textContent=p.length||"";$("dlengthRow").style.display=p.length?"block":"none";$("dcolor").textContent=p.color||"";$("docc").textContent=p.occasion||"";$("dadd").onclick=()=>{addToCart(id);closeAll();openCart()};$("detail").classList.add("open")}
 function saveCart(){localStorage.setItem("PRISHAA_CART",JSON.stringify(cart));$("count").textContent=cart.reduce((s,x)=>s+x.qty,0)}
