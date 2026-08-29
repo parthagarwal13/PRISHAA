@@ -1,0 +1,13 @@
+PRISHAA Razorpay Payment Setup
+
+1. Run: npm install
+2. Add these to .env (local) and Vercel/Render environment variables:
+   RAZORPAY_KEY_ID=rzp_test_TVWogw3wPYZbog
+   RAZORPAY_KEY_SECRET=DEEvfn4atFv08IIkGz3JKEvw
+   RAZORPAY_WEBHOOK_SECRET=... (optional for now)
+3. Keep DATABASE_URL pointing to your Neon PostgreSQL database.
+4. The customer checkout creates a Razorpay order on the server, opens Razorpay Checkout, verifies the signature on the server, and only then marks the Neon order Paid/Confirmed.
+5. Never put RAZORPAY_KEY_SECRET in frontend code or commit .env to GitHub.
+6. For live payments, complete Razorpay account/KYC setup and use HTTPS.
+
+This build keeps your Neon PostgreSQL database and Cloudinary image storage.

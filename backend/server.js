@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import { Pool } from "@neondatabase/serverless";
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
+import Razorpay from "razorpay";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -79,6 +80,22 @@ const port = Number(process.env.PORT || 8787);
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 app.use(express.json({ limit: "15mb" }));
 
+async function ensurePaymentColumns() {
+  await pool.query(`
+    ALTER TABLE orders
+      ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'Cash on Delivery',
+      ADD COLUMN IF NOT EXISTS razorpay_order_id TEXT,
+      ADD COLUMN IF NOT EXISTS razorpay_payment_id TEXT,
+      ADD COLUMN IF NOT EXISTS razorpay_signature TEXT,
+      ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ
+  `);
+}
+
+const dbReady = ensurePaymentColumns().catch(err => {
+  console.error("❌ Could not prepare payment columns:", err);
+  throw err;
+});
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }
@@ -89,6 +106,14 @@ cloudinary.config({
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
+
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || "";
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || "";
+const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET || "";
+
+const razorpay = (RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET)
+  ? new Razorpay({ key_id: RAZORPAY_KEY_ID, key_secret: RAZORPAY_KEY_SECRET })
+  : null;
 
 const normalizeProduct = row => ({
   id: Number(row.id), name: row.name, category: row.category,
@@ -103,7 +128,8 @@ async function listProducts(){
 }
 
 async function listOrders(){
-  const o = await pool.query("SELECT id,order_code,customer_name,phone,address,city,state,pincode,total,status,created_at FROM orders ORDER BY created_at DESC,id DESC");
+  await dbReady;
+  const o = await pool.query("SELECT id,order_code,customer_name,phone,address,city,state,pincode,total,status,payment_status,razorpay_order_id,razorpay_payment_id,paid_at,created_at FROM orders ORDER BY created_at DESC,id DESC");
   const i = await pool.query("SELECT order_id,product_id,product_name,price,quantity FROM order_items ORDER BY id ASC");
   const map = new Map();
   for(const row of i.rows){
@@ -114,6 +140,10 @@ async function listOrders(){
     id:Number(row.id), orderCode:row.order_code, customerName:row.customer_name,
     phone:row.phone, address:row.address, city:row.city, state:row.state,
     pincode:row.pincode, total:Number(row.total), status:row.status,
+    paymentStatus:row.payment_status || "Cash on Delivery",
+    razorpayOrderId:row.razorpay_order_id || "",
+    razorpayPaymentId:row.razorpay_payment_id || "",
+    paidAt:row.paid_at || null,
     items:map.get(Number(row.id))||[], createdAt:row.created_at
   }));
 }
@@ -228,7 +258,152 @@ app.delete("/api/products/:id", requireAdmin, async (req,res)=>{
 
 app.get("/api/orders", requireAdmin, async (_req,res)=>{try{res.json(await listOrders())}catch(e){res.status(500).json({error:e.message})}});
 
+app.post("/api/payment/create-order", async (req, res) => {
+  try {
+    await dbReady;
+    if (!razorpay) {
+      return res.status(503).json({ error: "Online payment is not configured on the server yet." });
+    }
+
+    const c = req.body?.customer || {};
+    const items = Array.isArray(req.body?.items) ? req.body.items : [];
+    if (!c.name?.trim() || !c.phone?.trim() || !c.address?.trim() || !c.city?.trim() || !c.state?.trim() || !c.pincode?.trim()) {
+      return res.status(400).json({ error: "Please fill all customer and delivery details." });
+    }
+    if (!items.length) return res.status(400).json({ error: "Cart is empty." });
+
+    let total = 0;
+    const normalized = [];
+    for (const raw of items) {
+      const qty = Math.max(1, Number(raw.quantity || 1));
+      const pid = Number(raw.productId);
+      if (!Number.isInteger(pid) || qty > 99) throw new Error("Invalid cart item.");
+      const r = await pool.query("SELECT id,name,price FROM products WHERE id=$1", [pid]);
+      if (!r.rowCount) throw new Error(`Product ${pid} not found.`);
+      const p = r.rows[0];
+      const price = Number(p.price);
+      total += price * qty;
+      normalized.push({ productId: Number(p.id), productName: p.name, price, quantity: qty });
+    }
+
+    if (!Number.isFinite(total) || total <= 0) {
+      return res.status(400).json({ error: "Invalid order total." });
+    }
+
+    const code = `PRISHAA-${Math.random().toString(36).slice(2,8).toUpperCase()}`;
+    const razorOrder = await razorpay.orders.create({
+      amount: Math.round(total * 100),
+      currency: "INR",
+      receipt: code,
+      notes: { source: "prishaa-web" },
+      payment_capture: 1
+    });
+
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const order = await client.query(
+        `INSERT INTO orders(order_code,customer_name,phone,address,city,state,pincode,total,status,payment_status,razorpay_order_id)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,'Pending','Payment Pending',$9) RETURNING id,order_code,total,status,payment_status`,
+        [code,c.name.trim(),c.phone.trim(),c.address.trim(),c.city.trim(),c.state.trim(),c.pincode.trim(),total,razorOrder.id]
+      );
+      for (const item of normalized) {
+        await client.query(
+          "INSERT INTO order_items(order_id,product_id,product_name,price,quantity) VALUES($1,$2,$3,$4,$5)",
+          [Number(order.rows[0].id),item.productId,item.productName,item.price,item.quantity]
+        );
+      }
+      await client.query("COMMIT");
+      return res.json({
+        keyId: RAZORPAY_KEY_ID,
+        razorpayOrderId: razorOrder.id,
+        orderId: Number(order.rows[0].id),
+        orderCode: code,
+        amount: Math.round(total * 100),
+        currency: "INR",
+        customer: { name: c.name.trim(), phone: c.phone.trim() }
+      });
+    } catch (e) {
+      await client.query("ROLLBACK");
+      throw e;
+    } finally {
+      client.release();
+    }
+  } catch (e) {
+    console.error("Create payment order error:", e);
+    return res.status(500).json({ error: e.message || "Unable to create payment order." });
+  }
+});
+
+app.post("/api/payment/verify", async (req, res) => {
+  try {
+    await dbReady;
+    if (!RAZORPAY_KEY_SECRET) return res.status(503).json({ error: "Online payment is not configured on the server yet." });
+
+    const { orderId, razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body || {};
+    if (!Number.isInteger(Number(orderId)) || !razorpay_payment_id || !razorpay_order_id || !razorpay_signature) {
+      return res.status(400).json({ error: "Incomplete payment verification data." });
+    }
+
+    const local = await pool.query(
+      "SELECT id,order_code,total,status,razorpay_order_id,payment_status FROM orders WHERE id=$1",
+      [Number(orderId)]
+    );
+    if (!local.rowCount) return res.status(404).json({ error: "Order not found." });
+
+    const saved = local.rows[0];
+    if (!saved.razorpay_order_id || saved.razorpay_order_id !== razorpay_order_id) {
+      return res.status(400).json({ error: "Payment order mismatch." });
+    }
+
+    const body = `${saved.razorpay_order_id}|${razorpay_payment_id}`;
+    const expected = crypto.createHmac("sha256", RAZORPAY_KEY_SECRET).update(body).digest("hex");
+    const a = Buffer.from(expected);
+    const b = Buffer.from(String(razorpay_signature));
+    if (a.length !== b.length || !crypto.timingSafeEqual(a,b)) {
+      return res.status(400).json({ error: "Payment verification failed." });
+    }
+
+    // Optional extra check against Razorpay's server-side payment record.
+    const payment = await razorpay.payments.fetch(razorpay_payment_id);
+    if (payment.order_id !== saved.razorpay_order_id) {
+      return res.status(400).json({ error: "Payment order mismatch." });
+    }
+    if (payment.status !== "captured") {
+      return res.status(400).json({ error: `Payment status is ${payment.status}.` });
+    }
+
+    await pool.query(
+      `UPDATE orders SET payment_status='Paid', razorpay_payment_id=$1, razorpay_signature=$2, paid_at=NOW(), status='Confirmed' WHERE id=$3`,
+      [razorpay_payment_id, razorpay_signature, Number(orderId)]
+    );
+
+    return res.json({
+      success: true,
+      orderCode: saved.order_code,
+      total: Number(saved.total),
+      paymentStatus: "Paid"
+    });
+  } catch (e) {
+    console.error("Verify payment error:", e);
+    return res.status(500).json({ error: e.message || "Payment verification failed." });
+  }
+});
+
+app.post("/api/payment/failed", async (req, res) => {
+  try {
+    await dbReady;
+    const orderId = Number(req.body?.orderId);
+    if (!Number.isInteger(orderId)) return res.status(400).json({ error: "Invalid order." });
+    await pool.query("UPDATE orders SET payment_status='Payment Failed' WHERE id=$1 AND payment_status='Payment Pending'", [orderId]);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.post("/api/orders", async (req,res)=>{
+  await dbReady;
   const c=req.body?.customer||{},items=Array.isArray(req.body?.items)?req.body.items:[];
   if(!c.name?.trim()||!c.phone?.trim()||!c.address?.trim()||!c.city?.trim()||!c.state?.trim()||!c.pincode?.trim()) return res.status(400).json({error:"Please fill all customer and delivery details."});
   if(!items.length) return res.status(400).json({error:"Cart is empty."});
