@@ -15,10 +15,6 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "cloudinary": "^2.7.0",
-    "multer": "^2.0.2",
-    "razorpay": "^2.9.6"
-  },
-  "engines": {
-    "node": "22.x"
+    "multer": "^2.0.2"
   }
 }
