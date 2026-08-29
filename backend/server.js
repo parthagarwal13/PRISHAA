@@ -7,9 +7,6 @@ import { Pool } from "@neondatabase/serverless";
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
 
-
-
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, "..");
@@ -80,6 +77,14 @@ function requireAdmin(req, res, next) {
 const app = express();
 const port = Number(process.env.PORT || 8787);
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+// PRISHAA promotional offer. Change these three values when you want a new campaign.
+const OFFER = {
+  code: "PRISHAA20",
+  percent: 20,
+  minOrder: 999,
+  maxDiscount: 500
+};
 app.use(express.json({ limit: "15mb" }));
 
 const upload = multer({
@@ -197,33 +202,41 @@ app.post("/api/products", requireAdmin, async (req,res)=>{
   try{
     const p=req.body||{};
     if(!p.name?.trim()) return res.status(400).json({error:"Product name is required."});
+    if(Number.isNaN(Number(p.price))||Number(p.price)<0) return res.status(400).json({error:"Enter a valid price."});
     if(!p.image?.trim()) return res.status(400).json({error:"Please select a product image."});
 
-    const originalPrice=Number(p.originalPrice ?? p.price);
-    const offerActive=!!p.offerActive;
-    const offerPercent=Math.max(0,Math.min(100,Number(p.offerPercent||0)));
-    let offerPrice=(p.offerPrice===""||p.offerPrice==null)?null:Number(p.offerPrice);
+    const originalPrice = Number(p.originalPrice ?? p.price);
+    const offerActive = !!p.offerActive;
+    const offerPercent = Math.max(0, Math.min(100, Number(p.offerPercent || 0)));
+    const manualOfferPrice = p.offerPrice == null || p.offerPrice === "" ? null : Number(p.offerPrice);
 
-    if(!Number.isFinite(originalPrice)||originalPrice<0)
+    if(Number.isNaN(originalPrice) || originalPrice < 0){
       return res.status(400).json({error:"Enter a valid original price."});
-
-    if(offerActive){
-      if(offerPrice==null && offerPercent>0)
-        offerPrice=Math.max(0,originalPrice-(originalPrice*offerPercent/100));
-      if(offerPrice==null) offerPrice=originalPrice;
-      if(!Number.isFinite(offerPrice)||offerPrice<0||offerPrice>originalPrice)
-        return res.status(400).json({error:"Offer price must be between ₹0 and the original price."});
-    }else{
-      offerPrice=null;
     }
 
-    const sellingPrice=offerActive?offerPrice:originalPrice;
+    let offerPrice = manualOfferPrice;
+    if(offerActive){
+      if(offerPrice == null){
+        offerPrice = Math.max(0, originalPrice - (originalPrice * offerPercent / 100));
+      }
+      if(Number.isNaN(offerPrice) || offerPrice < 0 || offerPrice > originalPrice){
+        return res.status(400).json({error:"Offer price must be between ₹0 and the original price."});
+      }
+    }else{
+      offerPrice = null;
+    }
+
+    const sellingPrice = offerActive ? offerPrice : originalPrice;
 
     const r=await pool.query(
       `INSERT INTO products(name,category,price,original_price,offer_active,offer_percent,offer_price,size,length,color,occasion,image_url,description)
        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
        RETURNING id,name,category,price,original_price,offer_active,offer_percent,offer_price,size,length,color,occasion,image_url,description,created_at`,
-      [p.name.trim(),p.category||"Lehengas",sellingPrice,originalPrice,offerActive,offerPercent,offerPrice,p.size?.trim()||"",p.length?.trim()||"",p.color?.trim()||"",p.occasion?.trim()||"",p.image.trim(),p.description?.trim()||""]
+      [
+        p.name.trim(), p.category||"Suits", sellingPrice, originalPrice, offerActive,
+        offerPercent, offerPrice, p.size?.trim()||"", p.length?.trim()||"",
+        p.color?.trim()||"", p.occasion?.trim()||"", p.image.trim(), p.description?.trim()||""
+      ]
     );
     res.status(201).json(normalizeProduct(r.rows[0]));
   }catch(e){res.status(500).json({error:e.message})}
@@ -231,38 +244,48 @@ app.post("/api/products", requireAdmin, async (req,res)=>{
 
 app.put("/api/products/:id", requireAdmin, async (req,res)=>{
   try{
-    const id=Number(req.params.id),p=req.body||{};
+    const id=Number(req.params.id), p=req.body||{};
     if(!p.name?.trim()) return res.status(400).json({error:"Product name is required."});
+    if(Number.isNaN(Number(p.price))||Number(p.price)<0) return res.status(400).json({error:"Enter a valid price."});
 
     const old=await pool.query("SELECT * FROM products WHERE id=$1",[id]);
     if(!old.rowCount) return res.status(404).json({error:"Product not found."});
 
-    const originalPrice=Number(p.originalPrice ?? old.rows[0].original_price ?? p.price);
-    const offerActive=!!p.offerActive;
-    const offerPercent=Math.max(0,Math.min(100,Number(p.offerPercent||0)));
-    let offerPrice=(p.offerPrice===""||p.offerPrice==null)?null:Number(p.offerPrice);
+    const originalPrice = Number(p.originalPrice ?? old.rows[0].original_price ?? p.price);
+    const offerActive = !!p.offerActive;
+    const offerPercent = Math.max(0, Math.min(100, Number(p.offerPercent || 0)));
+    const manualOfferPrice = p.offerPrice == null || p.offerPrice === "" ? null : Number(p.offerPrice);
 
-    if(!Number.isFinite(originalPrice)||originalPrice<0)
+    if(Number.isNaN(originalPrice) || originalPrice < 0){
       return res.status(400).json({error:"Enter a valid original price."});
-
-    if(offerActive){
-      if(offerPrice==null && offerPercent>0)
-        offerPrice=Math.max(0,originalPrice-(originalPrice*offerPercent/100));
-      if(offerPrice==null) offerPrice=originalPrice;
-      if(!Number.isFinite(offerPrice)||offerPrice<0||offerPrice>originalPrice)
-        return res.status(400).json({error:"Offer price must be between ₹0 and the original price."});
-    }else{
-      offerPrice=null;
     }
 
-    const sellingPrice=offerActive?offerPrice:originalPrice;
-    const image=p.image?.trim()||old.rows[0].image_url;
+    let offerPrice = manualOfferPrice;
+    if(offerActive){
+      if(offerPrice == null){
+        offerPrice = Math.max(0, originalPrice - (originalPrice * offerPercent / 100));
+      }
+      if(Number.isNaN(offerPrice) || offerPrice < 0 || offerPrice > originalPrice){
+        return res.status(400).json({error:"Offer price must be between ₹0 and the original price."});
+      }
+    }else{
+      offerPrice = null;
+    }
+
+    const sellingPrice = offerActive ? offerPrice : originalPrice;
+    const image = p.image?.trim() || old.rows[0].image_url;
 
     const r=await pool.query(
-      `UPDATE products SET name=$1,category=$2,price=$3,original_price=$4,offer_active=$5,offer_percent=$6,offer_price=$7,size=$8,length=$9,color=$10,occasion=$11,image_url=$12,description=$13
+      `UPDATE products
+       SET name=$1,category=$2,price=$3,original_price=$4,offer_active=$5,offer_percent=$6,offer_price=$7,
+           size=$8,length=$9,color=$10,occasion=$11,image_url=$12,description=$13
        WHERE id=$14
        RETURNING id,name,category,price,original_price,offer_active,offer_percent,offer_price,size,length,color,occasion,image_url,description,created_at`,
-      [p.name.trim(),p.category||"Lehengas",sellingPrice,originalPrice,offerActive,offerPercent,offerPrice,p.size?.trim()||"",p.length?.trim()||"",p.color?.trim()||"",p.occasion?.trim()||"",image,p.description?.trim()||"",id]
+      [
+        p.name.trim(), p.category||"Suits", sellingPrice, originalPrice, offerActive, offerPercent, offerPrice,
+        p.size?.trim()||"", p.length?.trim()||"", p.color?.trim()||"",
+        p.occasion?.trim()||"", image, p.description?.trim()||"", id
+      ]
     );
     res.json(normalizeProduct(r.rows[0]));
   }catch(e){res.status(500).json({error:e.message})}
@@ -280,23 +303,42 @@ app.get("/api/orders", requireAdmin, async (_req,res)=>{try{res.json(await listO
 
 app.post("/api/orders", async (req,res)=>{
   const c=req.body?.customer||{},items=Array.isArray(req.body?.items)?req.body.items:[];
+  const coupon=String(req.body?.coupon||"").trim().toUpperCase();
   if(!c.name?.trim()||!c.phone?.trim()||!c.address?.trim()||!c.city?.trim()||!c.state?.trim()||!c.pincode?.trim()) return res.status(400).json({error:"Please fill all customer and delivery details."});
   if(!items.length) return res.status(400).json({error:"Cart is empty."});
   const client=await pool.connect();
   try{
     await client.query("BEGIN");
-    let total=0, normalized=[];
+    let subtotal=0, normalized=[];
     for(const raw of items){
       const qty=Math.max(1,Number(raw.quantity||1)),pid=Number(raw.productId);
       const r=await client.query("SELECT id,name,price FROM products WHERE id=$1",[pid]);
       if(!r.rowCount) throw new Error(`Product ${pid} not found.`);
-      const p=r.rows[0],price=Number(p.price); total+=price*qty;
+      const p=r.rows[0],price=Number(p.price); subtotal+=price*qty;
       normalized.push({productId:Number(p.id),productName:p.name,price,quantity:qty});
     }
+
+    let discount=0;
+    let appliedCoupon="";
+    if(coupon){
+      if(coupon!==OFFER.code){
+        await client.query("ROLLBACK");
+        return res.status(400).json({error:"Invalid or expired coupon code."});
+      }
+      if(subtotal<OFFER.minOrder){
+        await client.query("ROLLBACK");
+        return res.status(400).json({error:`Coupon ${OFFER.code} requires a minimum order of ${OFFER.minOrder}.`});
+      }
+      discount=Math.min(Math.round(subtotal*OFFER.percent/100),OFFER.maxDiscount);
+      appliedCoupon=OFFER.code;
+    }
+
+    const total=Math.max(0,subtotal-discount);
     const code=`PRISHAA-${Math.random().toString(36).slice(2,8).toUpperCase()}`;
     const order=await client.query(`INSERT INTO orders(order_code,customer_name,phone,address,city,state,pincode,total,status) VALUES($1,$2,$3,$4,$5,$6,$7,$8,'Pending') RETURNING id`,[code,c.name.trim(),c.phone.trim(),c.address.trim(),c.city.trim(),c.state.trim(),c.pincode.trim(),total]);
     for(const item of normalized) await client.query("INSERT INTO order_items(order_id,product_id,product_name,price,quantity) VALUES($1,$2,$3,$4,$5)",[Number(order.rows[0].id),item.productId,item.productName,item.price,item.quantity]);
-    await client.query("COMMIT"); res.status(201).json({success:true,orderCode:code,total});
+    await client.query("COMMIT");
+    res.status(201).json({success:true,orderCode:code,subtotal,discount,total,coupon:appliedCoupon});
   }catch(e){await client.query("ROLLBACK");res.status(500).json({error:e.message})}finally{client.release()}
 });
 

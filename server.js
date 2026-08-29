@@ -2,6 +2,7 @@ import express from "express";
 import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import fs from "node:fs";
 import dotenv from "dotenv";
 import { Pool } from "@neondatabase/serverless";
 import multer from "multer";
@@ -12,7 +13,13 @@ import { v2 as cloudinary } from "cloudinary";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const ROOT = path.resolve(__dirname, "..");
+
+// Works whether server.js is in the project root or inside /backend.
+const rootCandidate = path.resolve(__dirname, "..");
+const ROOT =
+  (fs.existsSync(path.join(__dirname, "user")) && fs.existsSync(path.join(__dirname, "admin")))
+    ? __dirname
+    : rootCandidate;
 
 dotenv.config({ path: path.join(ROOT, ".env") });
 if (!process.env.DATABASE_URL) {
@@ -84,20 +91,13 @@ const pool = new Pool({
   connectionTimeoutMillis: 10000
 });
 
-// Per-product offer columns. These are safe to add to the existing products
-// table and keep old products working with their current price.
+// Automatically add the offer columns to the existing products table.
+// Existing products keep their current price as original_price.
 const schemaReady = pool.query(`
-  ALTER TABLE products
-    ADD COLUMN IF NOT EXISTS original_price NUMERIC(12,2);
-
-  ALTER TABLE products
-    ADD COLUMN IF NOT EXISTS offer_active BOOLEAN DEFAULT FALSE;
-
-  ALTER TABLE products
-    ADD COLUMN IF NOT EXISTS offer_percent NUMERIC(5,2) DEFAULT 0;
-
-  ALTER TABLE products
-    ADD COLUMN IF NOT EXISTS offer_price NUMERIC(12,2);
+  ALTER TABLE products ADD COLUMN IF NOT EXISTS original_price NUMERIC(12,2);
+  ALTER TABLE products ADD COLUMN IF NOT EXISTS offer_active BOOLEAN DEFAULT FALSE;
+  ALTER TABLE products ADD COLUMN IF NOT EXISTS offer_percent NUMERIC(5,2) DEFAULT 0;
+  ALTER TABLE products ADD COLUMN IF NOT EXISTS offer_price NUMERIC(12,2);
 
   UPDATE products
   SET
@@ -107,8 +107,8 @@ const schemaReady = pool.query(`
   WHERE original_price IS NULL
      OR offer_active IS NULL
      OR offer_percent IS NULL;
-`).catch(error => {
-  console.error("❌ Database schema check failed:", error.message);
+`).catch((error) => {
+  console.error("Database schema setup failed:", error.message);
   throw error;
 });
 
@@ -194,8 +194,17 @@ app.post("/admin/logout", (req, res) => {
 });
 
 app.get("/api/health", async (_req,res)=>{
-  try { await pool.query("SELECT 1"); res.json({ok:true,database:"connected"}); }
-  catch(e){ res.status(500).json({ok:false,error:e.message}); }
+  try {
+    await schemaReady;
+    await pool.query("SELECT 1");
+    res.json({
+      ok: true,
+      database: "connected",
+      root: ROOT
+    });
+  } catch(e) {
+    res.status(500).json({ok:false,error:e.message});
+  }
 });
 
 app.post("/api/upload-image", requireAdmin, upload.single("image"), async (req, res) => {
@@ -237,8 +246,8 @@ app.post("/api/upload-image", requireAdmin, upload.single("image"), async (req, 
 app.get("/api/products", async (_req,res)=>{ try{res.json(await listProducts())}catch(e){res.status(500).json({error:e.message})} });
 
 app.post("/api/products", requireAdmin, async (req,res)=>{
-  await schemaReady;
   try{
+    await schemaReady;
     const p=req.body||{};
     if(!p.name?.trim()) return res.status(400).json({error:"Product name is required."});
     if(!p.image?.trim()) return res.status(400).json({error:"Please select a product image."});
@@ -274,8 +283,8 @@ app.post("/api/products", requireAdmin, async (req,res)=>{
 });
 
 app.put("/api/products/:id", requireAdmin, async (req,res)=>{
-  await schemaReady;
   try{
+    await schemaReady;
     const id=Number(req.params.id),p=req.body||{};
     if(!p.name?.trim()) return res.status(400).json({error:"Product name is required."});
 
@@ -358,12 +367,43 @@ app.delete("/api/orders/:id", requireAdmin, async (req,res)=>{
   try{const r=await pool.query("DELETE FROM orders WHERE id=$1 RETURNING id",[Number(req.params.id)]);if(!r.rowCount)return res.status(404).json({error:"Order not found."});res.json({success:true})}catch(e){res.status(500).json({error:e.message})}
 });
 
-app.use("/admin", requireAdmin, express.static(path.join(ROOT,"admin")));
-app.use("/user",express.static(path.join(ROOT,"user")));
-app.get("/",(_req,res)=>res.redirect("/user/"));
+// Frontend routes
+app.use("/user", express.static(path.join(ROOT, "user")));
+
+app.get("/user", (_req, res) => {
+  res.sendFile(path.join(ROOT, "user", "index.html"));
+});
+
+app.get("/user/", (_req, res) => {
+  res.sendFile(path.join(ROOT, "user", "index.html"));
+});
+
+app.get("/admin/", (req, res) => {
+  if (validAdminToken(getCookie(req, "prishaa_admin_session"))) {
+    return res.sendFile(path.join(ROOT, "admin", "index.html"));
+  }
+  return res.sendFile(path.join(ROOT, "admin", "login.html"));
+});
+
+app.use("/admin", requireAdmin, express.static(path.join(ROOT, "admin")));
+
+app.get("/", (_req, res) => res.redirect("/user/"));
+
 app.use(express.static(ROOT));
+
+// Helpful fallback: never expose API routes as HTML.
+app.use((req, res) => {
+  if (req.path.startsWith("/api/")) {
+    return res.status(404).json({ error: "API route not found." });
+  }
+  return res.status(404).send("Page not found.");
+});
+
 if (!process.env.VERCEL) {
-  app.listen(port,()=>console.log(`PRISHAA running on http://localhost:${port}`));
+  app.listen(port, () => {
+    console.log(`PRISHAA running on http://localhost:${port}`);
+    console.log(`Project root: ${ROOT}`);
+  });
 }
 
 export default app;
