@@ -467,24 +467,35 @@ function items(){return cart.map(x=>({x,p:products.find(p=>p.id===x.id)})).filte
 function total(){return items().reduce((s,v)=>s+v.p.price*v.x.qty,0)}
 function calculateDiscount(_subtotal){ return 0; }
 function renderCart(){
-  const a=items(),subtotal=total();
-  $("cartItems").innerHTML=a.map(x=>`<div class="cartrow"><img src="${esc(x.image)}"><div><b>${esc(x.name)}</b><div>${money(x.price)}</div><div class="qty"><button onclick="changeQty(${x.id},-1)">−</button><b>${x.qty}</b><button onclick="changeQty(${x.id},1)">+</button></div></div><button class="remove" onclick="removeItem(${x.id})">Remove</button></div>`).join("")||"<p>Your cart is empty.</p>";
-  $("cartTotal").innerHTML=a.length?`<div style="padding:10px 0;font-size:20px;font-weight:800">Total: ${money(subtotal)}</div>`:"";
+  const a=items(), subtotal=total();
+  const cartItems=$("cartItems");
+  const cartTotal=$("cartTotal");
+
+  // This page can load even when the cart drawer is not present.
+  // Never crash the whole storefront because an optional cart element is missing.
+  if(cartItems){
+    cartItems.innerHTML=a.map(x=>`<div class="cartrow"><img src="${esc(x.image)}"><div><b>${esc(x.name)}</b><div>${money(x.price)}</div><div class="qty"><button onclick="changeQty(${x.id},-1)">−</button><b>${x.qty}</b><button onclick="changeQty(${x.id},1)">+</button></div></div><button class="remove" onclick="removeItem(${x.id})">Remove</button></div>`).join("")||"<p>Your cart is empty.</p>";
+  }
+  if(cartTotal){
+    cartTotal.innerHTML=a.length?`<div style="padding:10px 0;font-size:20px;font-weight:800">Total: ${money(subtotal)}</div>`:"";
+  }
 }
 
 function openCart(){closeAll();renderCart();$("cartModal").classList.add("open")}
 function openCheckout(){if(!items().length)return;closeAll();$("checkoutModal").classList.add("open");refreshCheckoutSummary()}
 function placeOrder(){if(!items().length)return;openCheckout()}
 function refreshCheckoutSummary(){
+  const box=$("checkoutSummary");
+  if(!box) return;
   const subtotal=total();
-  $("checkoutSummary").innerHTML=items().length
+  box.innerHTML=items().length
     ? `<div>Subtotal: <b>${money(subtotal)}</b></div><div style="margin-top:6px;font-size:18px;font-weight:800">Total: ${money(subtotal)}</div>`
     : "";
 }
-document.getElementById("checkoutForm").onsubmit=async e=>{
+const checkoutForm=document.getElementById("checkoutForm");
+if(checkoutForm) checkoutForm.onsubmit=async e=>{
   e.preventDefault();
   try{
-    const coupon=String($("checkoutCoupon").value||appliedCoupon||"").trim().toUpperCase();
     const payload={customer:{name:$("name").value.trim(),phone:$("phone").value.trim(),address:$("address").value.trim(),city:$("city").value.trim(),state:$("state").value.trim(),pincode:$("pincode").value.trim()},items:cart.map(x=>({productId:x.id,quantity:x.qty}))};
     const r=await api("/api/orders",{method:"POST",body:JSON.stringify(payload)});
     cart=[];saveCart();e.target.reset();
@@ -493,7 +504,7 @@ document.getElementById("checkoutForm").onsubmit=async e=>{
     if(typeof openContactPopup==="function")setTimeout(openContactPopup,180);
   }catch(err){$("orderResult").innerHTML=`<div style="color:#b22">${esc(err.message)}</div>`}
 };
-saveCart();loadProducts().catch(()=>{});setInterval(()=>loadProducts().catch(()=>{}),5000);
+saveCart();loadProducts();
 </script><script>
 function openContactPopup(){
   const popup = document.getElementById("contactPopup");
