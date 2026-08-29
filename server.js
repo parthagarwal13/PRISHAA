@@ -22,18 +22,15 @@ const ROOT =
     : rootCandidate;
 
 dotenv.config({ path: path.join(ROOT, ".env") });
-if (!process.env.DATABASE_URL) {
-  console.error("❌ DATABASE_URL missing. Create .env from .env.example");
-  process.exit(1);
-}
-
+const DATABASE_URL = process.env.DATABASE_URL || "";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 const ADMIN_SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || "";
 
+if (!DATABASE_URL) {
+  console.error("DATABASE_URL is missing. Add it in Vercel Environment Variables.");
+}
 if (!ADMIN_PASSWORD || !ADMIN_SESSION_SECRET) {
-  console.error("❌ ADMIN_PASSWORD and ADMIN_SESSION_SECRET are required.");
-  console.error("Add them to your .env (local) and Render environment variables (production).");
-  process.exit(1);
+  console.error("Admin environment variables are missing. Add ADMIN_PASSWORD and ADMIN_SESSION_SECRET in Vercel.");
 }
 
 function createAdminToken() {
@@ -87,7 +84,7 @@ function requireAdmin(req, res, next) {
 const app = express();
 const port = Number(process.env.PORT || 8787);
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: DATABASE_URL,
   connectionTimeoutMillis: 10000
 });
 
@@ -113,6 +110,13 @@ const schemaReady = pool.query(`
 });
 
 app.use(express.json({ limit: "15mb" }));
+
+app.get("/api/health", (_req, res) => {
+  if (!DATABASE_URL) {
+    return res.status(500).json({ ok:false, error:"DATABASE_URL is missing in Vercel Environment Variables." });
+  }
+  res.json({ ok:true });
+});
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -243,7 +247,15 @@ app.post("/api/upload-image", requireAdmin, upload.single("image"), async (req, 
   }
 });
 
-app.get("/api/products", async (_req,res)=>{ try{res.json(await listProducts())}catch(e){res.status(500).json({error:e.message})} });
+app.get("/api/products", async (_req,res)=>{
+  try{
+    if(!DATABASE_URL) return res.status(500).json({error:"DATABASE_URL is missing in Vercel Environment Variables."});
+    res.json(await listProducts());
+  }catch(e){
+    console.error("GET /api/products failed:", e);
+    res.status(500).json({error:e.message || "Database connection failed."});
+  }
+});
 
 app.post("/api/products", requireAdmin, async (req,res)=>{
   try{

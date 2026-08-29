@@ -436,8 +436,19 @@ async function api(path,options={}){
   throw lastError||new Error("Request failed");
 }
 async function loadProducts(){
-  try{products=await api("/api/products");render();renderCart();}
-  catch(e){$("grid").innerHTML='<div style="grid-column:1/-1;text-align:center;padding:50px"><b>Opening PRISHAA…</b><br><span style="color:#6d5961">Please wait a few seconds while the store starts.</span></div>';setTimeout(loadProducts,1500);}
+  $("grid").innerHTML='<div style="grid-column:1/-1;text-align:center;padding:50px"><b>Opening PRISHAA…</b><br><span style="color:#6d5961">Connecting to the store…</span></div>';
+  try{
+    products=await api("/api/products");
+    render();
+    renderCart();
+  }catch(e){
+    const msg=esc(e?.message||"Unable to connect to the server.");
+    $("grid").innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:50px">
+      <b>Store could not load</b><br>
+      <span style="color:#b42318;display:inline-block;margin:10px 0">${msg}</span><br>
+      <button class="add" onclick="loadProducts()">Try Again</button>
+    </div>`;
+  }
 }
 function render(){
   const q=$("search").value.trim().toLowerCase();
