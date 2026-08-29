@@ -273,20 +273,7 @@
 <option>Dupattas</option>
 <option>Accessories</option>
 <option>Co-ord Sets</option>
-</select><input id="price" type="number" min="0" required placeholder="Price"><div class="offer-box" style="border:1px solid #eadbe2;border-radius:16px;padding:14px;margin-top:12px;background:#fff8fb">
-  <label style="display:flex;align-items:center;gap:9px;font-weight:700;margin-bottom:12px">
-    <input type="checkbox" id="offerActive"> Enable Offer
-  </label>
-  <div class="row">
-    <label>Original Price (₹)<input id="originalPrice" type="number" min="0" step="0.01" placeholder="2499"></label>
-    <label>Offer %<input id="offerPercent" type="number" min="0" max="100" step="0.01" placeholder="20"></label>
-  </div>
-  <label style="display:block;margin-top:10px">Offer Price (₹)
-    <input id="offerPrice" type="number" min="0" step="0.01" placeholder="1999">
-  </label>
-  <div style="font-size:12px;color:#6d5961;margin-top:7px">Enter offer price, or leave it blank to calculate it from Offer %.</div>
-</div>
-<input id="size" placeholder="S, M, L, XL">
+</select><input id="price" type="number" min="0" required placeholder="Price"><input id="size" placeholder="S, M, L, XL">
 <input id="length" placeholder="Length (optional, e.g. 42 in)"><input id="color" placeholder="Colour"><input id="occasion" placeholder="Occasion"><label><b>Product Image</b></label><input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp" required><div class="hint">PNG / JPG / JPEG / WEBP supported. Images are uploaded securely to Cloudinary.</div><img id="preview" class="preview"><textarea id="description" placeholder="Description"></textarea><button class="btn pink">Save Product</button></form></div></div>
 
 <script>
@@ -339,20 +326,8 @@ async function load(){
 function renderProducts(){$("rows").innerHTML=products.map(p=>`<tr><td><img class="thumb" src="${esc(p.image)}" onerror="this.src='https://via.placeholder.com/100x120?text=PRISHAA'"></td><td><b>${esc(p.name)}</b><div>${esc(p.color||"")}</div></td><td>${esc(p.category)}</td><td>${money(p.price)}</td><td>${esc(p.size||"-")}${p.length?`<div style="font-size:12px;color:#6d5961;margin-top:3px">Length: ${esc(p.length)}</div>`:""}</td><td><button class="btn soft" onclick="editProduct(${p.id})">Edit</button> <button class="btn danger" onclick="deleteProduct(${p.id})">Delete</button></td></tr>`).join("")}
 function renderOrders(){const a=orders;$("ordersList").innerHTML=a.length?a.map(o=>{const items=Array.isArray(o.items)?o.items:[];const itemsHtml=items.length?items.map(i=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:10px 12px;border-bottom:1px solid #eee"><div><b>${esc(i.productName||"Product")}</b><div style="font-size:13px;color:#6d5961">Qty: ${Number(i.quantity||1)} × ${money(i.price||0)}</div></div><b>${money(Number(i.price||0)*Number(i.quantity||1))}</b></div>`).join(""):"<div style=\"padding:12px;color:#6d5961\">No item details saved.</div>";return `<div class="order"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap"><div><b>${esc(o.orderCode||"PRISHAA-ORDER")}</b><div style="font-size:13px;color:#6d5961;margin-top:4px">${esc(o.createdAt||"")}</div></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><select onchange="changeStatus(${o.id},this.value)">${["Pending","Confirmed","Packed","Shipped","Delivered","Cancelled"].map(status=>`<option ${status===o.status?"selected":""}>${status}</option>`).join("")}</select><button type="button" class="btn danger" onclick="deleteOrder(${o.id})">🗑 Delete Order</button></div></div><hr><div><b>Customer:</b> ${esc(o.customerName||"")}</div><div><b>Phone:</b> ${esc(o.phone||"")}</div><div style="margin-top:8px;padding:12px;border:1px solid #f0dfe6;border-radius:10px;background:#fff7fa"><b>Delivery Address:</b><br>${esc(o.address||"")}<br>${esc(o.city||"")}${o.city?", ":""}${esc(o.state||"")}${o.pincode?" - "+esc(o.pincode):""}</div><div style="margin-top:14px;font-weight:800">Ordered Items</div><div style="margin-top:8px;border:1px solid #eee;border-radius:10px;overflow:hidden">${itemsHtml}</div><div style="display:flex;justify-content:space-between;margin-top:14px;padding-top:12px;border-top:1px solid #e7dde2;font-size:18px"><span>Total Order Value</span><b>${money(o.total||0)}</b></div></div>`}).join(""):`<div class="order" style="text-align:center;padding:40px">No orders yet.</div>`}
 function showTab(id,b){document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));b.classList.add("active");$(id).classList.add("active")}
-function openForm(p=null){editingId=p?.id||null;$("title").textContent=editingId?"Edit Product":"Add Product";$("name").value=p?.name||"";$("category").value=p?.category||"Lehengas";$("price").value=p?.price??""; $("originalPrice").value=p?.originalPrice ?? p?.price ?? ""; $("offerActive").checked=!!p?.offerActive; $("offerPercent").value=p?.offerPercent ?? ""; $("offerPrice").value=p?.offerPrice ?? "";$("size").value=p?.size||"";$("length").value=p?.length||"";$("color").value=p?.color||"";$("occasion").value=p?.occasion||"";$("description").value=p?.description||"";$("imageFile").value="";$("preview").src=p?.image||"";$("preview").style.display=p?.image?"block":"none";$("imageFile").required=!editingId;$("modal").classList.add("open")}
+function openForm(p=null){editingId=p?.id||null;$("title").textContent=editingId?"Edit Product":"Add Product";$("name").value=p?.name||"";$("category").value=p?.category||"Lehengas";$("price").value=p?.price??"";$("size").value=p?.size||"";$("length").value=p?.length||"";$("color").value=p?.color||"";$("occasion").value=p?.occasion||"";$("description").value=p?.description||"";$("imageFile").value="";$("preview").src=p?.image||"";$("preview").style.display=p?.image?"block":"none";$("imageFile").required=!editingId;$("modal").classList.add("open")}
 function editProduct(id){const p=products.find(x=>x.id===id);if(p)openForm(p)}
-function syncOfferPrice(){
-  if(!$("offerActive").checked) return;
-  const original=Number($("originalPrice").value||$("price").value||0);
-  const pct=Number($("offerPercent").value||0);
-  const manual=$("offerPrice").value.trim();
-  if(original>0 && pct>0 && !manual){
-    $("offerPrice").value=(original-(original*pct/100)).toFixed(2).replace(/\.00$/,"");
-  }
-}
-$("offerPercent").addEventListener("input",()=>{ $("offerPrice").value=""; syncOfferPrice(); });
-$("originalPrice").addEventListener("input",()=>{ $("offerPrice").value=""; syncOfferPrice(); });
-$("offerActive").addEventListener("change",()=>{ if(!$("offerActive").checked) $("offerPrice").value=""; });
 function closeForm(){$("modal").classList.remove("open")}
 $("imageFile").addEventListener("change",function(){const f=this.files[0];if(!f)return;if(!f.type.startsWith("image/")){alert("Please select JPG/JPEG/PNG/WEBP.");this.value="";return}$('preview').src=URL.createObjectURL(f);$('preview').style.display='block'})
 async function compressImage(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{let w=img.width,h=img.height,max=1000;if(w>max){h=Math.round(h*max/w);w=max}const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);resolve(c.toDataURL('image/jpeg',0.72))};img.onerror=()=>reject(new Error('Could not read the image.'));img.src=r.result};r.onerror=()=>reject(new Error('Could not read the file.'));r.readAsDataURL(file)})}
@@ -399,7 +374,7 @@ $("form").addEventListener("submit",async e=>{
     const payload = {
       name: $("name").value.trim(),
       category: $("category").value,
-      price: Number($("price").value), originalPrice:Number($("originalPrice").value || $("price").value), offerActive:$("offerActive").checked, offerPercent:Number($("offerPercent").value || 0), offerPrice:$("offerPrice").value.trim(),
+      price: Number($("price").value),
       size: $("size").value.trim(),
       length: $("length").value.trim(),
       color: $("color").value.trim(),

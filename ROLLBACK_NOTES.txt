@@ -1,0 +1,5 @@
+This rollback is based on the earlier PRISHAA Cloudinary + Neon version.
+It removes the invalid vercel.json runtime configuration.
+No global 20% coupon, Razorpay payment, or per-product offer modifications are included.
+Neon database backend and Cloudinary image upload are preserved.
+Keep your existing .env and .git folder; do not overwrite them.

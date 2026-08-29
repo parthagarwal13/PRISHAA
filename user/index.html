@@ -9,16 +9,8 @@ nav{position:sticky;top:0;z-index:10;background:#fff;padding:15px 6%;display:fle
 .wrap{padding:50px 6%}.head{display:flex;justify-content:space-between;align-items:center;gap:20px}.head h2{font-size:34px;margin:0}.filters{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.filter{border:1px solid #eadbe2;background:#fff;padding:9px 15px;border-radius:22px;cursor:pointer}.filter.active{background:#aa3d69;color:#fff}
 .search{margin:20px 0}.search input{width:100%;padding:14px;border:1px solid #eadbe2;border-radius:14px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:22px}
 .card{background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 8px 25px #0001}.card img{width:100%;height:300px;object-fit:cover;background:#f1e8ec}.body{padding:16px}.tag{font-size:13px;color:#aa3d69;font-weight:800}.price{font-size:21px;font-weight:800;margin:10px 0}.card button{display:block;width:100%;padding:11px;border:0;border-radius:10px;font-weight:700;cursor:pointer}.view{background:#aa3d69;color:#fff}.add{background:#f3dfe8;color:#7d2c4d;margin-top:8px}
-.overlay{position:fixed;inset:0;background:#0008;display:none;z-index:50}.overlay.open{display:flex;align-items:center;justify-content:center}.panel{background:#fff;width:min(850px,95%);max-height:90vh;overflow:auto;border-radius:22px;padding:24px}.drawer{position:absolute;right:0;top:0;height:100%;width:min(500px,100%);background:#fff;padding:24px;overflow:auto}.close{float:right;border:0;background:#eee;border-radius:50%;width:35px;height:35px}.details{display:grid;grid-template-columns:1fr 1fr;gap:25px}.details img{width:100%;height:520px;object-fit:cover;border-radius:16px;background:#f1e8ec}.offer-cart{margin-top:12px;padding:14px;border:1px solid #eadbe2;background:#fff7fa;border-radius:14px}.offer-cart small{color:#6c5861}
-.cartrow{display:grid;grid-template-columns:70px 1fr auto;gap:12px;padding:12px 0;border-bottom:1px solid #eee}.cartrow img{width:70px;height:80px;object-fit:cover;border-radius:10px}.qty{display:flex;gap:7px;align-items:center;margin-top:8px}.qty button{border:1px solid #ddd;background:#fff;padding:5px 9px;border-radius:7px}.form{display:grid;gap:11px}.checkout-offer{margin:10px 0;padding:14px;border-radius:12px;background:#fff0f5;border:1px solid #eadbe2;color:#7d2c4d}.checkout-offer span{font-size:13px;color:#6c5861}.checkout-summary{padding:12px;border-radius:12px;background:#fff;border:1px solid #eadbe2;color:#4d3c44}.form input,.form textarea{padding:12px;border:1px solid #e6d9df;border-radius:10px}.form textarea{min-height:80px}.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.success{background:#e9f8ee;color:#205f39;padding:14px;border-radius:12px}footer{background:#2d1722;color:#fff;padding:40px 6%;margin-top:30px}
+.overlay{position:fixed;inset:0;background:#0008;display:none;z-index:50}.overlay.open{display:flex;align-items:center;justify-content:center}.panel{background:#fff;width:min(850px,95%);max-height:90vh;overflow:auto;border-radius:22px;padding:24px}.drawer{position:absolute;right:0;top:0;height:100%;width:min(500px,100%);background:#fff;padding:24px;overflow:auto}.close{float:right;border:0;background:#eee;border-radius:50%;width:35px;height:35px}.details{display:grid;grid-template-columns:1fr 1fr;gap:25px}.details img{width:100%;height:520px;object-fit:cover;border-radius:16px;background:#f1e8ec}.cartrow{display:grid;grid-template-columns:70px 1fr auto;gap:12px;padding:12px 0;border-bottom:1px solid #eee}.cartrow img{width:70px;height:80px;object-fit:cover;border-radius:10px}.qty{display:flex;gap:7px;align-items:center;margin-top:8px}.qty button{border:1px solid #ddd;background:#fff;padding:5px 9px;border-radius:7px}.form{display:grid;gap:11px}.form input,.form textarea{padding:12px;border:1px solid #e6d9df;border-radius:10px}.form textarea{min-height:80px}.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.success{background:#e9f8ee;color:#205f39;padding:14px;border-radius:12px}footer{background:#2d1722;color:#fff;padding:40px 6%;margin-top:30px}
 @media(max-width:1050px){.grid{grid-template-columns:repeat(2,1fr)}.hero{grid-template-columns:1fr}}@media(max-width:650px){.grid{grid-template-columns:1fr}.details{grid-template-columns:1fr}.two{grid-template-columns:1fr}.head{flex-direction:column;align-items:flex-start}}
-
-
-
-
-
-
-}
 
 .premium-tagline{
     display:inline-block;
@@ -324,12 +316,6 @@ html,body{max-width:100%;overflow-x:hidden}
   }
 }
 
-
-.offer-price-row{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-.offer-original{text-decoration:line-through;color:#9a8a91;font-size:15px;font-weight:600}
-.offer-current{color:#aa3d69;font-size:21px;font-weight:800}
-.offer-badge{display:inline-block;background:#aa3d69;color:#fff;font-size:11px;font-weight:800;padding:4px 7px;border-radius:999px}
-
 </style></head><body>
 <nav><div class="logo"><div>PRISHAA</div><small>WOMEN'S COLLECTION</small></div><div> <button class="btn pink" onclick="openCart()">Cart (<span id="count">0</span>)</button></div></nav>
 <section class="hero"><div><h1><span class="premium-tagline">Let your elegance speak for you</span></h1><p>Shop stylish suits and stunning lehengas for festive, party and wedding occasions.</p><button class="btn pink" onclick="document.getElementById('collection').scrollIntoView({behavior:'smooth'})">Shop Collection</button></div><div class="hero-slideshow" aria-label="PRISHAA featured collection">
@@ -412,7 +398,7 @@ html,body{max-width:100%;overflow-x:hidden}
 </div>
 <div id="detail" class="overlay"><div class="panel"><button class="close" onclick="closeAll()">×</button><div class="details"><img id="dimg"><div><div id="dcat" class="tag"></div><h2 id="dname"></h2><div id="dprice" class="price"></div><p id="ddesc"></p><p><b>Sizes:</b> <span id="dsize"></span></p><p id="dlengthRow" style="display:none"><b>Length:</b> <span id="dlength"></span></p><p><b>Colour:</b> <span id="dcolor"></span></p><p><b>Occasion:</b> <span id="docc"></span></p><button id="dadd" class="btn pink" style="width:100%">Add to Cart</button></div></div></div></div>
 <div id="cartModal" class="overlay"><div class="drawer"><button class="close" onclick="closeAll()">×</button><h2>Your Cart</h2><div id="cartRows"></div><div id="cartTotal"></div><button class="btn pink" style="width:100%;margin-top:10px" onclick="placeOrder()">Place Order</button></div></div>
-<div id="checkoutModal" class="overlay"><div class="panel"><button class="close" onclick="closeAll()">×</button><h2>Checkout</h2><form id="checkoutForm" class="form"><input id="name" required placeholder="Full name"><input id="phone" required pattern="[0-9]{10}" placeholder="10-digit phone"><textarea id="address" required placeholder="Full address"></textarea><div class="two"><input id="city" required placeholder="City"><input id="state" required placeholder="State"></div><input id="pincode" required pattern="[0-9]{6}" placeholder="Pincode"><div id="checkoutSummary" class="checkout-summary"></div><button class="btn pink">Place Order</button></form><div id="orderResult"></div></div></div></div>
+<div id="checkoutModal" class="overlay"><div class="panel"><button class="close" onclick="closeAll()">×</button><h2>Checkout</h2><form id="checkoutForm" class="form"><input id="name" required placeholder="Full name"><input id="phone" required pattern="[0-9]{10}" placeholder="10-digit phone"><textarea id="address" required placeholder="Full address"></textarea><div class="two"><input id="city" required placeholder="City"><input id="state" required placeholder="State"></div><input id="pincode" required pattern="[0-9]{6}" placeholder="Pincode"><button class="btn pink">Place Order</button></form><div id="orderResult"></div></div></div></div>
 
 <script>
 const $=id=>document.getElementById(id);
@@ -423,70 +409,59 @@ async function api(path,options={}){
   const method=(options.method||"GET").toUpperCase();
   const maxAttempts=method==="GET"?6:1;
   let lastError=null;
-  for(let attempt=0;attempt<maxAttempts;attempt++){
+
+  for(let attempt=0; attempt<maxAttempts; attempt++){
     try{
-      const r=await fetch(path,{cache:"no-store",...options,headers:{"Content-Type":"application/json",...(options.headers||{})}});
+      const r=await fetch(path,{
+        cache:"no-store",
+        ...options,
+        headers:{"Content-Type":"application/json",...(options.headers||{})}
+      });
+
       if(r.status===401) throw new Error("Admin login required.");
       const d=await r.json().catch(()=>({}));
+
       if(r.ok) return d;
+
       lastError=new Error(d.error||`Request failed (${r.status})`);
-      if(![502,503,504].includes(r.status)||attempt===maxAttempts-1) throw lastError;
+      if(![502,503,504].includes(r.status) || attempt===maxAttempts-1) throw lastError;
     }catch(err){
       lastError=err;
-      if(attempt===maxAttempts-1||method!=="GET") throw err;
+      if(attempt===maxAttempts-1 || method!=="GET") throw err;
     }
+
     const wait=[800,1200,1800,2500,3500][attempt]||3500;
     await new Promise(resolve=>setTimeout(resolve,wait));
   }
+
   throw lastError||new Error("Request failed");
 }
 async function loadProducts(){
-  try{products=await api("/api/products");render();renderCart();}
-  catch(e){$("grid").innerHTML='<div style="grid-column:1/-1;text-align:center;padding:50px"><b>Opening PRISHAA…</b><br><span style="color:#6d5961">Please wait a few seconds while the store starts.</span></div>';setTimeout(loadProducts,1500);}
+  try{
+    products=await api("/api/products");
+    render();
+    renderCart();
+  }catch(e){
+    $("grid").innerHTML='<div style="grid-column:1/-1;text-align:center;padding:50px"><b>Opening PRISHAA…</b><br><span style="color:#6d5961">Please wait a few seconds while the store starts.</span></div>';
+    setTimeout(loadProducts,1500);
+  }
 }
-function render(){
-  const q=$("search").value.trim().toLowerCase();
-  const list=products.filter(p=>(category==="All"||p.category===category)&&(!q||(p.name+" "+p.category+" "+p.color+" "+p.occasion).toLowerCase().includes(q)));
-  $("grid").innerHTML=list.map(p=>`<article class="card"><img src="${esc(p.image)}" alt="${esc(p.name)}" onerror="this.src='https://via.placeholder.com/700x800?text=PRISHAA'"><div class="body"><div class="tag">${esc(p.category)}</div><h3>${esc(p.name)}</h3><div>${esc(p.color||"")}</div><div class="price">${money(p.price)}</div><button class="view" onclick="showProduct(${p.id})">View Details</button><button class="add" onclick="addToCart(${p.id})">Add to Cart</button></div></article>`).join("")||'<div style="grid-column:1/-1;text-align:center;padding:50px">No products found.</div>';
-}
+function render(){const q=$("search").value.trim().toLowerCase();const list=products.filter(p=>(category==="All"||p.category===category)&&(!q||(p.name+" "+p.category+" "+p.color+" "+p.occasion).toLowerCase().includes(q)));$("grid").innerHTML=list.map(p=>`<article class="card"><img src="${esc(p.image)}" alt="${esc(p.name)}" onerror="this.src='https://via.placeholder.com/700x800?text=PRISHAA'"><div class="body"><div class="tag">${esc(p.category)}</div><h3>${esc(p.name)}</h3><div>${esc(p.color||"")}</div><div class="price">${money(p.price)}</div><button class="view" onclick="showProduct(${p.id})">View Details</button><button class="add" onclick="addToCart(${p.id})">Add to Cart</button></div></article>`).join("")||'<div style="grid-column:1/-1;text-align:center;padding:50px">No products found.</div>'}
 function setCat(c,b){category=c;document.querySelectorAll(".filter").forEach(x=>x.classList.remove("active"));b.classList.add("active");render()}
-function showProduct(id){
-  const p=products.find(x=>x.id===id);if(!p)return;closeAll();
-  $("dimg").src=p.image;$("dcat").textContent=p.category;$("dname").textContent=p.name;$("dprice").textContent=money(p.price);$("ddesc").textContent=p.description;$("dsize").textContent=p.size||"";$("dlength").textContent=p.length||"";$("dlengthRow").style.display=p.length?"block":"none";$("dcolor").textContent=p.color||"";$("docc").textContent=p.occasion||"";
-  $("dadd").onclick=()=>{addToCart(id);closeAll();openCart()};$("detail").classList.add("open");
-}
+function showProduct(id){const p=products.find(x=>x.id===id);if(!p)return;closeAll();$("dimg").src=p.image;$("dcat").textContent=p.category;$("dname").textContent=p.name;$("dprice").textContent=money(p.price);$("ddesc").textContent=p.description;$("dsize").textContent=p.size||"";$("dlength").textContent=p.length||"";$("dlengthRow").style.display=p.length?"block":"none";$("dcolor").textContent=p.color||"";$("docc").textContent=p.occasion||"";$("dadd").onclick=()=>{addToCart(id);closeAll();openCart()};$("detail").classList.add("open")}
 function saveCart(){localStorage.setItem("PRISHAA_CART",JSON.stringify(cart));$("count").textContent=cart.reduce((s,x)=>s+x.qty,0)}
 function addToCart(id){const x=cart.find(i=>i.id===id);x?x.qty++:cart.push({id,qty:1});saveCart();renderCart()}
 function items(){return cart.map(x=>({x,p:products.find(p=>p.id===x.id)})).filter(v=>v.p)}
 function total(){return items().reduce((s,v)=>s+v.p.price*v.x.qty,0)}
-function renderCart(){
-  const a=items(),subtotal=total(),discount=calculateDiscount(subtotal),finalTotal=Math.max(0,subtotal-discount);
-  $("cartRows").innerHTML=a.length?a.map(v=>`<div class="cartrow"><img src="${esc(v.p.image)}"><div><b>${esc(v.p.name)}</b><div>${money(v.p.price)}</div><div class="qty"><button onclick="qty(${v.p.id},-1)">−</button>${v.x.qty}<button onclick="qty(${v.p.id},1)">+</button><button onclick="removeItem(${v.p.id})">Remove</button></div></div><b>${money(v.p.price*v.x.qty)}</b></div>`).join(""):'<div style="padding:40px;text-align:center">Cart is empty.</div>';
-  $("cartTotal").innerHTML=a.length?`<div style="padding:14px 0 4px">Total: <b>${money(subtotal)}</b></div>`:"";font-size:20px;font-weight:800">Total: ${money(finalTotal)}</div>`:"";
-}
+function renderCart(){const a=items();$("cartRows").innerHTML=a.length?a.map(v=>`<div class="cartrow"><img src="${esc(v.p.image)}"><div><b>${esc(v.p.name)}</b><div>${money(v.p.price)}</div><div class="qty"><button onclick="qty(${v.p.id},-1)">−</button>${v.x.qty}<button onclick="qty(${v.p.id},1)">+</button><button onclick="removeItem(${v.p.id})">Remove</button></div></div><b>${money(v.p.price*v.x.qty)}</b></div>`).join(""):'<div style="padding:40px;text-align:center">Cart is empty.</div>';$("cartTotal").innerHTML=a.length?`<div style="padding:15px 0;font-size:20px;font-weight:800">Total: ${money(total())}</div>`:""}
 function qty(id,d){const x=cart.find(i=>i.id===id);if(!x)return;x.qty+=d;if(x.qty<=0)cart=cart.filter(i=>i.id!==id);saveCart();renderCart()}
 function removeItem(id){cart=cart.filter(i=>i.id!==id);saveCart();renderCart()}
 function closeAll(){document.querySelectorAll(".overlay").forEach(x=>x.classList.remove("open"))}
 function openCart(){closeAll();renderCart();$("cartModal").classList.add("open")}
-function openCheckout(){if(!items().length)return;closeAll();$("checkoutModal").classList.add("open");refreshCheckoutSummary()}
+function openCheckout(){if(!items().length)return;closeAll();$("checkoutModal").classList.add("open")}
 function placeOrder(){if(!items().length)return;openCheckout()}
-function refreshCheckoutSummary(){
-  const subtotal=total(),code=String($("checkoutCoupon")?.value||appliedCoupon||"").trim().toUpperCase();
-  $("checkoutSummary").innerHTML=items().length?`<div>Subtotal: <b>${money(subtotal)}</b></div>${discount?`<div style="color:#2f7a4d">Discount (${esc(code)}}
-document.getElementById("checkoutForm").onsubmit=async e=>{
-  e.preventDefault();
-  try{
-    const coupon=String($("checkoutCoupon").value||appliedCoupon||"").trim().toUpperCase();
-    const payload={customer:{name:$("name").value.trim(),phone:$("phone").value.trim(),address:$("address").value.trim(),city:$("city").value.trim(),state:$("state").value.trim(),pincode:$("pincode").value.trim()},items:cart.map(x=>({productId:x.id,quantity:x.qty})),coupon};
-    const r=await api("/api/orders",{method:"POST",body:JSON.stringify(payload)});
-    cart=[];appliedCoupon="";saveCart();e.target.reset();
-    $("checkoutSummary").innerHTML=`<div>Subtotal: <b>${money(r.subtotal)}</b></div>${r.discount?`<div style="color:#2f7a4d">Discount: <b>- ${money(r.discount)}</b></div>`:""}<div style="margin-top:6px;font-size:18px;font-weight:800">Total: ${money(r.total)}</div>`;
-    $("orderResult").innerHTML=`<div class="success"><b>Order placed successfully!</b><br>Order ID: <b>${esc(r.orderCode)}</b><br>Total: <b>${money(r.total)}</b>${r.coupon?`<br>Coupon: <b>${esc(r.coupon)}</b>`:""}</div>`;
-    if(typeof openContactPopup==="function")setTimeout(openContactPopup,180);
-  }catch(err){$("orderResult").innerHTML=`<div style="color:#b22">${esc(err.message)}</div>`}
-};
-document.getElementById("checkoutCoupon").addEventListener("input",refreshCheckoutSummary);
-saveCart();loadProducts().catch(()=>{});setInterval(()=>loadProducts().catch(()=>{}),5000);
+document.getElementById("checkoutForm").onsubmit=async e=>{e.preventDefault();try{const payload={customer:{name:$("name").value.trim(),phone:$("phone").value.trim(),address:$("address").value.trim(),city:$("city").value.trim(),state:$("state").value.trim(),pincode:$("pincode").value.trim()},items:cart.map(x=>({productId:x.id,quantity:x.qty}))};const r=await api("/api/orders",{method:"POST",body:JSON.stringify(payload)});cart=[];saveCart();e.target.reset();$("orderResult").innerHTML=`<div class="success"><b>Order placed successfully!</b><br>Order ID: <b>${esc(r.orderCode)}</b><br>Total: <b>${money(r.total)}</b></div>`;if(typeof openContactPopup==="function")setTimeout(openContactPopup,180)}catch(err){$("orderResult").innerHTML=`<div style="color:#b22">${esc(err.message)}</div>`}}
+saveCart();loadProducts().catch(err=>{$("grid").innerHTML=`<div style="grid-column:1/-1;padding:50px;color:#a22">Could not load products. ${esc(err.message)}</div>`});setInterval(()=>loadProducts().catch(()=>{}),5000);
 </script><script>
 function openContactPopup(){
   const popup = document.getElementById("contactPopup");
