@@ -1,19 +1,12 @@
 {
-  "name": "prishaa-neon-backend",
-  "version": "1.0.0",
-  "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --watch backend/server.js",
-    "start": "node server.js",
-    "seed": "node backend/seed.js",
-    "check": "node backend/check-db.js",
-    "vercel-build": "echo Vercel deployment ready"
+    "start": "node server.js"
   },
   "dependencies": {
+    "express": "^4.21.2",
     "@neondatabase/serverless": "^1.0.0",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2",
     "cloudinary": "^2.7.0",
     "multer": "^2.0.2"
   }
