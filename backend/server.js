@@ -79,12 +79,6 @@ const port = Number(process.env.PORT || 8787);
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 // PRISHAA promotional offer. Change these three values when you want a new campaign.
-const OFFER = {
-  code: "PRISHAA20",
-  percent: 20,
-  minOrder: 999,
-  maxDiscount: 500
-};
 app.use(express.json({ limit: "15mb" }));
 
 const upload = multer({
@@ -303,7 +297,6 @@ app.get("/api/orders", requireAdmin, async (_req,res)=>{try{res.json(await listO
 
 app.post("/api/orders", async (req,res)=>{
   const c=req.body?.customer||{},items=Array.isArray(req.body?.items)?req.body.items:[];
-  const coupon=String(req.body?.coupon||"").trim().toUpperCase();
   if(!c.name?.trim()||!c.phone?.trim()||!c.address?.trim()||!c.city?.trim()||!c.state?.trim()||!c.pincode?.trim()) return res.status(400).json({error:"Please fill all customer and delivery details."});
   if(!items.length) return res.status(400).json({error:"Cart is empty."});
   const client=await pool.connect();
@@ -317,23 +310,9 @@ app.post("/api/orders", async (req,res)=>{
       const p=r.rows[0],price=Number(p.price); subtotal+=price*qty;
       normalized.push({productId:Number(p.id),productName:p.name,price,quantity:qty});
     }
-
-    let discount=0;
-    let appliedCoupon="";
-    if(coupon){
-      if(coupon!==OFFER.code){
-        await client.query("ROLLBACK");
-        return res.status(400).json({error:"Invalid or expired coupon code."});
-      }
-      if(subtotal<OFFER.minOrder){
-        await client.query("ROLLBACK");
-        return res.status(400).json({error:`Coupon ${OFFER.code} requires a minimum order of ${OFFER.minOrder}.`});
-      }
-      discount=Math.min(Math.round(subtotal*OFFER.percent/100),OFFER.maxDiscount);
-      appliedCoupon=OFFER.code;
-    }
-
-    const total=Math.max(0,subtotal-discount);
+    const discount=0;
+    const appliedCoupon="";
+    const total=subtotal;
     const code=`PRISHAA-${Math.random().toString(36).slice(2,8).toUpperCase()}`;
     const order=await client.query(`INSERT INTO orders(order_code,customer_name,phone,address,city,state,pincode,total,status) VALUES($1,$2,$3,$4,$5,$6,$7,$8,'Pending') RETURNING id`,[code,c.name.trim(),c.phone.trim(),c.address.trim(),c.city.trim(),c.state.trim(),c.pincode.trim(),total]);
     for(const item of normalized) await client.query("INSERT INTO order_items(order_id,product_id,product_name,price,quantity) VALUES($1,$2,$3,$4,$5)",[Number(order.rows[0].id),item.productId,item.productName,item.price,item.quantity]);
