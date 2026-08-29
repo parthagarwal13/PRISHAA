@@ -7,6 +7,15 @@ import { Pool } from "@neondatabase/serverless";
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
 
+import express from "express";
+
+const app = express();
+
+// tera existing saara backend code yahin rahega
+
+export default app;
+
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, "..");
