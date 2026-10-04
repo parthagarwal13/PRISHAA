@@ -75,7 +75,7 @@ Visit/contact information and brand identity are now combined in one single bloc
 1. Address + contact
 2. RangRiwaz
 3. WOMEN'S COLLECTION
-4. Let your elegance speak for you
+4. Har suit ki ek Kahani
 5. by Priya & Shweta
 
 LATEST UI FIX: Removed duplicate address/contact block. Kept one combined section and repeated RangRiwaz in matching handwritten style beneath WOMEN'S COLLECTION.
