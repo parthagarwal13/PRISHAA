@@ -15,9 +15,11 @@ Use:
 ## 3. Environment variable
 In Render -> Environment add:
 - `DATABASE_URL` = your Neon PostgreSQL connection string
+- `RAZORPAY_KEY_ID` = your Razorpay Test Mode Key ID
+- `RAZORPAY_KEY_SECRET` = your Razorpay Test Mode Key Secret
 - `NODE_ENV` = `production`
 
-Do NOT commit `.env` or the Neon password.
+Do NOT commit `.env`, payment keys, or the Neon password. Start with Razorpay Test Mode keys and switch to Live Mode keys only after a successful test checkout.
 
 ## 4. Deploy
 Click Create Web Service / Deploy.

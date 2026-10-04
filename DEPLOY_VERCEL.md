@@ -24,6 +24,8 @@ In Vercel Project → Settings → Environment Variables, add:
 DATABASE_URL=your Neon connection string
 ADMIN_PASSWORD=your admin password
 ADMIN_SESSION_SECRET=your long random secret
+RAZORPAY_KEY_ID=your Razorpay Test Mode Key ID
+RAZORPAY_KEY_SECRET=your Razorpay Test Mode Key Secret
 NODE_ENV=production
 
 Redeploy after adding/changing environment variables.
@@ -45,4 +47,4 @@ npm start
 The same Express app still works locally.
 
 Important:
-Keep secrets only in environment variables. Never put DATABASE_URL or ADMIN_PASSWORD into frontend JavaScript or GitHub.
+Keep secrets only in environment variables. Never put DATABASE_URL, ADMIN_PASSWORD, or RAZORPAY_KEY_SECRET into frontend JavaScript or GitHub. Use Test Mode keys until a full test checkout succeeds.

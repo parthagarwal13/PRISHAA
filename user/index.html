@@ -428,7 +428,7 @@ html,body{max-width:100%;overflow-x:hidden}
 </div>
 <div id="detail" class="overlay"><div class="panel"><button class="close" onclick="closeAll()">×</button><div class="details"><img id="dimg"><div><div id="dcat" class="tag"></div><h2 id="dname"></h2><div id="dprice" class="price"></div><p id="ddesc"></p><p><b>Sizes:</b> <span id="dsize"></span></p><p id="dlengthRow" style="display:none"><b>Length:</b> <span id="dlength"></span></p><p><b>Colour:</b> <span id="dcolor"></span></p><p><b>Occasion:</b> <span id="docc"></span></p><button id="dadd" class="btn pink" style="width:100%">Add to Cart</button></div></div></div></div>
 <div id="cartModal" class="overlay"><div class="drawer"><button class="close" onclick="closeAll()">×</button><h2>Your Cart</h2><div id="cartRows"></div><div id="cartTotal"></div><button class="btn pink" style="width:100%;margin-top:10px" onclick="placeOrder()">Place Order</button></div></div>
-<div id="checkoutModal" class="overlay"><div class="panel"><button class="close" onclick="closeAll()">×</button><h2>Checkout</h2><form id="checkoutForm" class="form"><input id="name" required placeholder="Full name"><input id="email" type="email" required autocomplete="email" placeholder="Gmail / email address"><input id="phone" required pattern="[0-9]{10}" placeholder="10-digit phone"><textarea id="address" required placeholder="Full address"></textarea><div class="two"><input id="city" required placeholder="City"><input id="state" required placeholder="State"></div><input id="pincode" required pattern="[0-9]{6}" placeholder="Pincode"><div id="checkoutSummary" class="checkout-summary"></div><button class="btn pink">Place Order</button></form><div id="orderResult"></div></div></div></div>
+<div id="checkoutModal" class="overlay"><div class="panel"><button class="close" onclick="closeAll()">×</button><h2>Checkout</h2><form id="checkoutForm" class="form"><input id="name" required placeholder="Full name"><input id="email" type="email" required autocomplete="email" placeholder="Gmail / email address"><input id="phone" required pattern="[0-9]{10}" placeholder="10-digit phone"><textarea id="address" required placeholder="Full address"></textarea><div class="two"><input id="city" required placeholder="City"><input id="state" required placeholder="State"></div><input id="pincode" required pattern="[0-9]{6}" placeholder="Pincode"><div id="checkoutSummary" class="checkout-summary"></div><button class="btn pink" type="submit">Pay Securely with Razorpay</button></form><div id="orderResult"></div></div></div></div>
 <div id="myOrdersModal" class="overlay"><div class="panel"><button class="close" onclick="closeAll()" aria-label="Close">×</button><h2>My Orders</h2><p style="color:#6c5861;line-height:1.5">Enter the phone number and email address used at checkout to see your order history.</p><form id="myOrdersForm" class="form"><input id="historyPhone" required inputmode="numeric" pattern="[0-9]{10}" maxlength="10" placeholder="10-digit phone number"><input id="historyEmail" type="email" required autocomplete="email" placeholder="Gmail / email address"><button class="btn pink">View Order History</button></form><div id="myOrdersResult" aria-live="polite"></div></div></div>
 
 <script>
@@ -445,7 +445,7 @@ async function api(path,options={}){
   for(let attempt=0;attempt<maxAttempts;attempt++){
     try{
       const r=await fetch(path,{cache:"no-store",...options,headers:{"Content-Type":"application/json",...(options.headers||{})}});
-      if(r.status===401) throw new Error("Admin login required.");
+      if(r.status===401) throw new Error(path.startsWith("/api/payments/")?"Razorpay rejected the server credentials. Please try again later.":"Admin login required.");
       const d=await r.json().catch(()=>({}));
       if(r.ok) return d;
       lastError=new Error(d.error||`Request failed (${r.status})`);
@@ -531,16 +531,29 @@ function refreshCheckoutSummary(){
     : "";
 }
 const checkoutForm=document.getElementById("checkoutForm");
+function loadRazorpayCheckout(){return new Promise((resolve,reject)=>{if(window.Razorpay)return resolve();const script=document.createElement("script");script.src="https://checkout.razorpay.com/v1/checkout.js";script.onload=resolve;script.onerror=()=>reject(new Error("Could not load Razorpay checkout. Check your internet connection and try again."));document.head.appendChild(script)})}
 if(checkoutForm) checkoutForm.onsubmit=async e=>{
   e.preventDefault();
+  const button=checkoutForm.querySelector('button[type="submit"]'),buttonText=button.textContent;
+  button.disabled=true;button.textContent="Connecting to Razorpay…";
   try{
     const payload={customer:{name:$("name").value.trim(),email:$("email").value.trim(),phone:$("phone").value.trim(),address:$("address").value.trim(),city:$("city").value.trim(),state:$("state").value.trim(),pincode:$("pincode").value.trim()},items:cart.map(x=>({productId:x.id,quantity:x.qty}))};
-    const r=await api("/api/orders",{method:"POST",body:JSON.stringify(payload)});
-    cart=[];saveCart();e.target.reset();
-    $("checkoutSummary").innerHTML=`<div>Subtotal: <b>${money(r.subtotal)}</b></div>${r.discount?`<div style="color:#2f7a4d">Discount: <b>- ${money(r.discount)}</b></div>`:""}<div style="margin-top:6px;font-size:18px;font-weight:800">Total: ${money(r.total)}</div>`;
-    $("orderResult").innerHTML=`<div class="success"><b>Order placed successfully!</b><br>Order ID: <b>${esc(r.orderCode)}</b><br>Total: <b>${money(r.total)}</b><br><button type="button" class="btn pink" style="margin-top:10px" onclick="openMyOrders('${esc(payload.customer.phone)}','${esc(payload.customer.email)}')">View My Orders</button><div style="font-size:12px;margin-top:7px">Use ${esc(payload.customer.email)} and your phone number to view your order history later.</div></div>`;
-    if(typeof openContactPopup==="function")setTimeout(openContactPopup,180);
-  }catch(err){$("orderResult").innerHTML=`<div style="color:#b22">${esc(err.message)}</div>`}
+    const paymentOrder=await api("/api/payments/create-order",{method:"POST",body:JSON.stringify(payload)});
+    $("checkoutSummary").innerHTML=`<div style="margin-top:6px;font-size:18px;font-weight:800">Amount to pay: ${money(paymentOrder.amount/100)}</div>`;
+    await loadRazorpayCheckout();
+    const checkout=new Razorpay({key:paymentOrder.keyId,amount:paymentOrder.amount,currency:paymentOrder.currency,name:"RangRiwaz",description:"Order payment",order_id:paymentOrder.razorpayOrderId,prefill:{name:payload.customer.name,email:payload.customer.email,contact:payload.customer.phone},theme:{color:"#aa3d69"},modal:{ondismiss:()=>{button.disabled=false;button.textContent=buttonText}} ,handler:async response=>{
+      try{
+        const confirmed=await api("/api/payments/verify",{method:"POST",body:JSON.stringify(response)});
+        cart=[];saveCart();checkoutForm.reset();
+        $("checkoutSummary").innerHTML=`<div style="margin-top:6px;font-size:18px;font-weight:800">Paid: ${money(confirmed.total)}</div>`;
+        $("orderResult").innerHTML=`<div class="success"><b>Payment successful and order placed!</b><br>Order ID: <b>${esc(confirmed.orderCode)}</b><br>Total paid: <b>${money(confirmed.total)}</b><br><button type="button" class="btn pink" style="margin-top:10px" onclick="openMyOrders('${esc(payload.customer.phone)}','${esc(payload.customer.email)}')">View My Orders</button><div style="font-size:12px;margin-top:7px">Use ${esc(payload.customer.email)} and your phone number to view your order history later.</div></div>`;
+        if(typeof openContactPopup==="function")setTimeout(openContactPopup,180);
+      }catch(error){$("orderResult").innerHTML=`<div style="color:#b22">${esc(error.message)} If money was deducted, contact the store with payment ID ${esc(response.razorpay_payment_id)}.</div>`}
+      finally{button.disabled=false;button.textContent=buttonText}
+    }});
+    checkout.on("payment.failed",response=>{$("orderResult").innerHTML=`<div style="color:#b22">Payment failed: ${esc(response.error?.description||"Please try again.")}</div>`;button.disabled=false;button.textContent=buttonText});
+    checkout.open();
+  }catch(err){$("orderResult").innerHTML=`<div style="color:#b22">${esc(err.message)}</div>`;button.disabled=false;button.textContent=buttonText}
 };
 saveCart();loadProducts();
 </script><script>

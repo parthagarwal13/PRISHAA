@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import { Pool } from "@neondatabase/serverless";
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
+import Razorpay from "razorpay";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,6 +20,9 @@ if (!process.env.DATABASE_URL) {
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 const ADMIN_SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || "";
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || "";
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || "";
+const razorpayClient = RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET ? new Razorpay({key_id:RAZORPAY_KEY_ID,key_secret:RAZORPAY_KEY_SECRET}) : null;
 
 if (!ADMIN_PASSWORD || !ADMIN_SESSION_SECRET) {
   console.error("❌ ADMIN_PASSWORD and ADMIN_SESSION_SECRET are required.");
@@ -78,6 +82,10 @@ const app = express();
 const port = Number(process.env.PORT || 8787);
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const schemaReady = pool.query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_email TEXT NOT NULL DEFAULT ''")
+  .then(()=>pool.query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_id TEXT"))
+  .then(()=>pool.query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method TEXT NOT NULL DEFAULT ''"))
+  .then(()=>pool.query("CREATE UNIQUE INDEX IF NOT EXISTS orders_payment_id_unique ON orders(payment_id) WHERE payment_id IS NOT NULL"))
+  .then(()=>pool.query("CREATE TABLE IF NOT EXISTS payment_sessions (razorpay_order_id TEXT PRIMARY KEY, customer JSONB NOT NULL, items JSONB NOT NULL, amount INTEGER NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())"))
   .then(()=>pool.query("ALTER TABLE products ADD COLUMN IF NOT EXISTS featured BOOLEAN DEFAULT FALSE"))
   .then(()=>pool.query("UPDATE products SET featured=FALSE WHERE featured IS NULL"))
   .catch(error=>{console.error("Database schema setup failed:",error.message);throw error});
@@ -317,33 +325,74 @@ app.post("/api/my-orders", async (req,res)=>{
   }catch(e){res.status(500).json({error:"Couldn't load your orders right now."})}
 });
 
-app.post("/api/orders", async (req,res)=>{
-  const c=req.body?.customer||{},items=Array.isArray(req.body?.items)?req.body.items:[];
-  c.email=String(c.email||"").trim().toLowerCase();
-  if(!c.name?.trim()||!/^\S+@\S+\.\S+$/.test(c.email)||!/^\d{10}$/.test(String(c.phone||"").replace(/\D/g,""))||!c.address?.trim()||!c.city?.trim()||!c.state?.trim()||!c.pincode?.trim()) return res.status(400).json({error:"Please fill all customer details with a valid email and 10-digit phone number."});
-  if(!items.length) return res.status(400).json({error:"Cart is empty."});
-  const client=await pool.connect();
+function validateCheckoutPayload(body){
+  const c={...(body?.customer||{})},items=Array.isArray(body?.items)?body.items:[];
+  c.name=String(c.name||"").trim();c.email=String(c.email||"").trim().toLowerCase();c.phone=String(c.phone||"").replace(/\D/g,"");
+  c.address=String(c.address||"").trim();c.city=String(c.city||"").trim();c.state=String(c.state||"").trim();c.pincode=String(c.pincode||"").trim();
+  if(!c.name||!/^\S+@\S+\.\S+$/.test(c.email)||!/^\d{10}$/.test(c.phone)||!c.address||!c.city||!c.state||!c.pincode) throw new Error("Please fill all customer details with a valid email and 10-digit phone number.");
+  if(!items.length) throw new Error("Cart is empty.");
+  return {customer:c,items};
+}
+
+app.post("/api/payments/create-order", async (req,res)=>{
+  let normalized=[];
   try{
-    await client.query("BEGIN");
-    let subtotal=0, normalized=[];
+    await schemaReady;
+    if(!RAZORPAY_KEY_ID||!RAZORPAY_KEY_SECRET) return res.status(503).json({error:"Razorpay is not configured. Add RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to the server environment."});
+    const {customer,items}=validateCheckoutPayload(req.body);let total=0;
     for(const raw of items){
-      const qty=Math.max(1,Number(raw.quantity||1)),pid=Number(raw.productId);
-      const r=await client.query("SELECT id,name,price FROM products WHERE id=$1",[pid]);
+      const qty=Number(raw.quantity),pid=Number(raw.productId);
+      if(!Number.isInteger(qty)||qty<1||qty>99||!Number.isInteger(pid)||pid<1) throw new Error("Invalid cart item.");
+      const r=await pool.query("SELECT id,name,price FROM products WHERE id=$1",[pid]);
       if(!r.rowCount) throw new Error(`Product ${pid} not found.`);
-      const p=r.rows[0],price=Number(p.price); subtotal+=price*qty;
+      const p=r.rows[0],price=Number(p.price);total+=price*qty;
       normalized.push({productId:Number(p.id),productName:p.name,price,quantity:qty});
     }
-    const discount=0;
-    const appliedCoupon="";
-    const total=subtotal;
-    const code=`RangRiwaz-${Math.random().toString(36).slice(2,8).toUpperCase()}`;
-    await schemaReady;
-    const order=await client.query(`INSERT INTO orders(order_code,customer_name,customer_email,phone,address,city,state,pincode,total,status) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'Pending') RETURNING id`,[code,c.name.trim(),c.email,c.phone.trim(),c.address.trim(),c.city.trim(),c.state.trim(),c.pincode.trim(),total]);
-    for(const item of normalized) await client.query("INSERT INTO order_items(order_id,product_id,product_name,price,quantity) VALUES($1,$2,$3,$4,$5)",[Number(order.rows[0].id),item.productId,item.productName,item.price,item.quantity]);
-    await client.query("COMMIT");
-    res.status(201).json({success:true,orderCode:code,subtotal,discount,total,coupon:appliedCoupon});
-  }catch(e){await client.query("ROLLBACK");res.status(500).json({error:e.message})}finally{client.release()}
+    const amount=Math.round(total*100);
+    if(!Number.isSafeInteger(amount)||amount<100) throw new Error("Order total must be at least ₹1.");
+    const razorpayOrder=await razorpayClient.orders.create({amount,currency:"INR",receipt:`rr_${crypto.randomBytes(12).toString("hex")}`});
+    await pool.query("INSERT INTO payment_sessions(razorpay_order_id,customer,items,amount) VALUES($1,$2::jsonb,$3::jsonb,$4)",[razorpayOrder.id,JSON.stringify(customer),JSON.stringify(normalized),amount]);
+    res.status(201).json({keyId:RAZORPAY_KEY_ID,razorpayOrderId:razorpayOrder.id,amount:razorpayOrder.amount,currency:razorpayOrder.currency});
+  }catch(e){const status=e?.statusCode===401?401:/Please fill|Cart is empty|Invalid cart|not found|at least ₹1/.test(e.message)?400:500;res.status(status).json({error:e?.statusCode===401?"Razorpay rejected the server API keys. Check the configured test mode credentials.":e.message||"Could not start payment."})}
 });
+
+app.post("/api/payments/verify", async (req,res)=>{
+  const orderId=String(req.body?.razorpay_order_id||""),paymentId=String(req.body?.razorpay_payment_id||""),signature=String(req.body?.razorpay_signature||"");
+  if(!orderId||!paymentId||!signature) return res.status(400).json({error:"Payment verification details are incomplete."});
+  if(!RAZORPAY_KEY_ID||!RAZORPAY_KEY_SECRET) return res.status(503).json({error:"Razorpay is not configured on the server."});
+  const expected=crypto.createHmac("sha256",RAZORPAY_KEY_SECRET).update(`${orderId}|${paymentId}`).digest("hex");
+  const actualBuffer=Buffer.from(signature,"hex"),expectedBuffer=Buffer.from(expected,"hex");
+  if(actualBuffer.length!==expectedBuffer.length||!crypto.timingSafeEqual(actualBuffer,expectedBuffer)) return res.status(400).json({error:"Razorpay payment signature is invalid."});
+  let client;
+  try{
+    await schemaReady;
+    const already=await pool.query("SELECT order_code,total FROM orders WHERE payment_id=$1",[paymentId]);
+    if(already.rowCount) return res.json({success:true,orderCode:already.rows[0].order_code,total:Number(already.rows[0].total)});
+    const sessionResult=await pool.query("SELECT customer,items,amount FROM payment_sessions WHERE razorpay_order_id=$1",[orderId]);
+    if(!sessionResult.rowCount) return res.status(404).json({error:"Payment session not found or already expired."});
+    const session=sessionResult.rows[0];
+    let payment=await razorpayClient.payments.fetch(paymentId);
+    if(payment.order_id!==orderId||Number(payment.amount)!==Number(session.amount)||payment.currency!=="INR") return res.status(400).json({error:"Payment details do not match this order."});
+    if(payment.status==="authorized") payment=await razorpayClient.payments.capture(paymentId,payment.amount,"INR");
+    if(payment.status!=="captured") return res.status(409).json({error:"Payment is not captured yet. Please retry verification shortly."});
+    client=await pool.connect();await client.query("BEGIN");
+    const locked=await client.query("SELECT customer,items,amount FROM payment_sessions WHERE razorpay_order_id=$1 FOR UPDATE",[orderId]);
+    if(!locked.rowCount){
+      const duplicate=await client.query("SELECT order_code,total FROM orders WHERE payment_id=$1",[paymentId]);
+      if(duplicate.rowCount){await client.query("COMMIT");return res.json({success:true,orderCode:duplicate.rows[0].order_code,total:Number(duplicate.rows[0].total)});}
+      await client.query("ROLLBACK");return res.status(404).json({error:"Payment session not found or already expired."});
+    }
+    const saved=locked.rows[0],customer=typeof saved.customer==="string"?JSON.parse(saved.customer):saved.customer,items=typeof saved.items==="string"?JSON.parse(saved.items):saved.items,total=Number(saved.amount)/100;
+    const code=`RangRiwaz-${Math.random().toString(36).slice(2,8).toUpperCase()}`;
+    const order=await client.query("INSERT INTO orders(order_code,customer_name,customer_email,phone,address,city,state,pincode,total,status,payment_id,payment_method) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'Pending',$10,'Razorpay') RETURNING id",[code,customer.name,customer.email,customer.phone,customer.address,customer.city,customer.state,customer.pincode,total,paymentId]);
+    for(const item of items) await client.query("INSERT INTO order_items(order_id,product_id,product_name,price,quantity) VALUES($1,$2,$3,$4,$5)",[Number(order.rows[0].id),item.productId,item.productName,item.price,item.quantity]);
+    await client.query("DELETE FROM payment_sessions WHERE razorpay_order_id=$1",[orderId]);await client.query("COMMIT");
+    res.json({success:true,orderCode:code,total});
+  }catch(e){if(client) await client.query("ROLLBACK").catch(()=>{});console.error("Razorpay verification failed:",e);const authFailed=e?.statusCode===401;res.status(authFailed?401:500).json({error:authFailed?"Razorpay rejected the server API keys. Check the configured test mode credentials.":"Payment was received, but order confirmation failed. Contact the store with your Razorpay payment ID."});}
+  finally{client?.release();}
+});
+
+app.post("/api/orders", (_req,res)=>res.status(410).json({error:"Please use the secure Razorpay checkout to place an order."}));
 
 app.put("/api/orders/:id/status", requireAdmin, async (req,res)=>{
   try{
