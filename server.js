@@ -380,15 +380,7 @@ app.delete("/api/orders/:id", requireAdmin, async (req,res)=>{
 });
 
 // Frontend routes
-app.use("/user", express.static(path.join(ROOT, "user")));
-
-app.get("/user", (_req, res) => {
-  res.sendFile(path.join(ROOT, "user", "index.html"));
-});
-
-app.get("/user/", (_req, res) => {
-  res.sendFile(path.join(ROOT, "user", "index.html"));
-});
+app.use("/user", (_req, res) => res.redirect(301, "/"));
 
 app.get("/admin/", (req, res) => {
   if (validAdminToken(getCookie(req, "prishaa_admin_session"))) {
@@ -399,7 +391,7 @@ app.get("/admin/", (req, res) => {
 
 app.use("/admin", requireAdmin, express.static(path.join(ROOT, "admin")));
 
-app.get("/", (_req, res) => res.redirect("/user/"));
+app.get("/", (_req, res) => res.sendFile(path.join(ROOT, "user", "index.html")));
 
 app.use(express.static(ROOT));
 
