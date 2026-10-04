@@ -77,6 +77,7 @@ function requireAdmin(req, res, next) {
 const app = express();
 const port = Number(process.env.PORT || 8787);
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const schemaReady = pool.query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_email TEXT NOT NULL DEFAULT ''").catch(error=>{console.error("Order email schema setup failed:",error.message);throw error});
 
 // RangRiwaz promotional offer. Change these three values when you want a new campaign.
 app.use(express.json({ limit: "15mb" }));
@@ -297,23 +298,27 @@ app.get("/api/orders", requireAdmin, async (_req,res)=>{try{res.json(await listO
 
 app.post("/api/my-orders", async (req,res)=>{
   const phone=String(req.body?.phone||"").replace(/\D/g,"");
+  const email=String(req.body?.email||"").trim().toLowerCase();
   const orderCode=String(req.body?.orderCode||"").trim();
-  if(!/^\d{10}$/.test(phone)||!orderCode) return res.status(400).json({error:"Enter your 10-digit phone number and an order ID."});
+  if(!/^\d{10}$/.test(phone)||(!/^\S+@\S+\.\S+$/.test(email)&&!orderCode)) return res.status(400).json({error:"Enter your 10-digit phone number and your email address."});
   try{
-    const verified=await pool.query("SELECT id FROM orders WHERE regexp_replace(phone,'\\D','','g')=$1 AND order_code=$2 LIMIT 1",[phone,orderCode]);
-    if(!verified.rowCount) return res.status(404).json({error:"We couldn't verify those details. Check your phone number and order ID."});
-    const orders=await pool.query("SELECT id,order_code,customer_name,phone,address,city,state,pincode,total,status,created_at FROM orders WHERE regexp_replace(phone,'\\D','','g')=$1 ORDER BY created_at DESC,id DESC",[phone]);
+    await schemaReady;
+    const legacyOnly=!/^\S+@\S+\.\S+$/.test(email);
+    const verified=await pool.query("SELECT id FROM orders WHERE regexp_replace(phone,'\\D','','g')=$1 AND (($2<>'' AND lower(customer_email)=$2) OR ($3<>'' AND customer_email='' AND order_code=$3)) LIMIT 1",[phone,email,orderCode]);
+    if(!verified.rowCount) return res.status(404).json({error:"We couldn't find orders for those details. Check your phone number and email."});
+    const orders=await pool.query(`SELECT id,order_code,customer_name,customer_email,phone,address,city,state,pincode,total,status,created_at FROM orders WHERE regexp_replace(phone,'\\D','','g')=$1 ${legacyOnly?"":"AND lower(customer_email)=$2"} ORDER BY created_at DESC,id DESC`,legacyOnly?[phone]:[phone,email]);
     const orderIds=orders.rows.map(order=>Number(order.id));
     const itemRows=orderIds.length?await pool.query("SELECT order_id,product_id,product_name,price,quantity FROM order_items WHERE order_id=ANY($1::bigint[]) ORDER BY id ASC",[orderIds]):{rows:[]};
     const itemsByOrder=new Map();
     for(const item of itemRows.rows){const id=Number(item.order_id);if(!itemsByOrder.has(id))itemsByOrder.set(id,[]);itemsByOrder.get(id).push({productId:Number(item.product_id),productName:item.product_name,price:Number(item.price),quantity:Number(item.quantity)});}
-    res.json(orders.rows.map(order=>({id:Number(order.id),orderCode:order.order_code,customerName:order.customer_name,phone:order.phone,address:order.address,city:order.city,state:order.state,pincode:order.pincode,total:Number(order.total),status:order.status,createdAt:order.created_at,items:itemsByOrder.get(Number(order.id))||[]})));
+    res.json(orders.rows.map(order=>({id:Number(order.id),orderCode:order.order_code,customerName:order.customer_name,email:order.customer_email,phone:order.phone,address:order.address,city:order.city,state:order.state,pincode:order.pincode,total:Number(order.total),status:order.status,createdAt:order.created_at,items:itemsByOrder.get(Number(order.id))||[]})));
   }catch(e){res.status(500).json({error:"Couldn't load your orders right now."})}
 });
 
 app.post("/api/orders", async (req,res)=>{
   const c=req.body?.customer||{},items=Array.isArray(req.body?.items)?req.body.items:[];
-  if(!c.name?.trim()||!c.phone?.trim()||!c.address?.trim()||!c.city?.trim()||!c.state?.trim()||!c.pincode?.trim()) return res.status(400).json({error:"Please fill all customer and delivery details."});
+  c.email=String(c.email||"").trim().toLowerCase();
+  if(!c.name?.trim()||!/^\S+@\S+\.\S+$/.test(c.email)||!/^\d{10}$/.test(String(c.phone||"").replace(/\D/g,""))||!c.address?.trim()||!c.city?.trim()||!c.state?.trim()||!c.pincode?.trim()) return res.status(400).json({error:"Please fill all customer details with a valid email and 10-digit phone number."});
   if(!items.length) return res.status(400).json({error:"Cart is empty."});
   const client=await pool.connect();
   try{
@@ -330,7 +335,8 @@ app.post("/api/orders", async (req,res)=>{
     const appliedCoupon="";
     const total=subtotal;
     const code=`RangRiwaz-${Math.random().toString(36).slice(2,8).toUpperCase()}`;
-    const order=await client.query(`INSERT INTO orders(order_code,customer_name,phone,address,city,state,pincode,total,status) VALUES($1,$2,$3,$4,$5,$6,$7,$8,'Pending') RETURNING id`,[code,c.name.trim(),c.phone.trim(),c.address.trim(),c.city.trim(),c.state.trim(),c.pincode.trim(),total]);
+    await schemaReady;
+    const order=await client.query(`INSERT INTO orders(order_code,customer_name,customer_email,phone,address,city,state,pincode,total,status) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'Pending') RETURNING id`,[code,c.name.trim(),c.email,c.phone.trim(),c.address.trim(),c.city.trim(),c.state.trim(),c.pincode.trim(),total]);
     for(const item of normalized) await client.query("INSERT INTO order_items(order_id,product_id,product_name,price,quantity) VALUES($1,$2,$3,$4,$5)",[Number(order.rows[0].id),item.productId,item.productName,item.price,item.quantity]);
     await client.query("COMMIT");
     res.status(201).json({success:true,orderCode:code,subtotal,discount,total,coupon:appliedCoupon});

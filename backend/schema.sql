@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS orders (
     id BIGSERIAL PRIMARY KEY,
     order_code TEXT UNIQUE NOT NULL,
     customer_name TEXT NOT NULL,
+    customer_email TEXT NOT NULL DEFAULT '',
     phone TEXT NOT NULL,
     address TEXT NOT NULL,
     city TEXT NOT NULL,
