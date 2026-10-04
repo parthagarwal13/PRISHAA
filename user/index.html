@@ -463,26 +463,26 @@ function showProduct(id){
   $("dimg").src=p.image;$("dcat").textContent=p.category;$("dname").textContent=p.name;$("dprice").textContent=money(p.price);$("ddesc").textContent=p.description;$("dsize").textContent=p.size||"";$("dlength").textContent=p.length||"";$("dlengthRow").style.display=p.length?"block":"none";$("dcolor").textContent=p.color||"";$("docc").textContent=p.occasion||"";
   $("dadd").onclick=()=>{addToCart(id);closeAll();openCart()};$("detail").classList.add("open");
 }
-function saveCart(){localStorage.setItem("PRISHAA_CART",JSON.stringify(cart));$("count").textContent=cart.reduce((s,x)=>s+x.qty,0)}
-function addToCart(id){const x=cart.find(i=>i.id===id);x?x.qty++:cart.push({id,qty:1});saveCart();renderCart()}
-function items(){return cart.map(x=>({x,p:products.find(p=>p.id===x.id)})).filter(v=>v.p)}
-function total(){return items().reduce((s,v)=>s+v.p.price*v.x.qty,0)}
+function saveCart(){localStorage.setItem("PRISHAA_CART",JSON.stringify(cart));const count=$("count");if(count)count.textContent=cart.reduce((s,x)=>s+(Number(x.qty)||0),0)}
+function addToCart(id){const x=cart.find(i=>String(i.id)===String(id));x?x.qty++:cart.push({id:Number(id),qty:1});saveCart();renderCart()}
+function items(){return cart.map(x=>({x,p:products.find(p=>String(p.id)===String(x.id))})).filter(v=>v.p)}
+function total(){return items().reduce((s,v)=>s+Number(v.p.price||0)*Number(v.x.qty||0),0)}
 function calculateDiscount(_subtotal){ return 0; }
 function renderCart(){
   const a=items(), subtotal=total();
-  const cartItems=$("cartItems");
+  const cartItems=$("cartRows");
   const cartTotal=$("cartTotal");
 
-  // This page can load even when the cart drawer is not present.
-  // Never crash the whole storefront because an optional cart element is missing.
   if(cartItems){
-    cartItems.innerHTML=a.map(x=>`<div class="cartrow"><img src="${esc(x.image)}"><div><b>${esc(x.name)}</b><div>${money(x.price)}</div><div class="qty"><button onclick="changeQty(${x.id},-1)">−</button><b>${x.qty}</b><button onclick="changeQty(${x.id},1)">+</button></div></div><button class="remove" onclick="removeItem(${x.id})">Remove</button></div>`).join("")||"<p>Your cart is empty.</p>";
+    cartItems.innerHTML=a.map(({x,p})=>`<div class="cartrow"><img src="${esc(p.image)}" alt="${esc(p.name)}"><div><b>${esc(p.name)}</b><div>${money(p.price)}</div><div class="qty"><button type="button" aria-label="Decrease quantity" onclick="changeQty(${p.id},-1)">−</button><b>${Number(x.qty)||1}</b><button type="button" aria-label="Increase quantity" onclick="changeQty(${p.id},1)">+</button></div></div><button type="button" class="remove" onclick="removeItem(${p.id})">Remove</button></div>`).join("")||"<p>Your cart is empty.</p>";
   }
   if(cartTotal){
     cartTotal.innerHTML=a.length?`<div style="padding:10px 0;font-size:20px;font-weight:800">Total: ${money(subtotal)}</div>`:"";
   }
 }
-
+function closeAll(){document.querySelectorAll(".overlay.open").forEach(overlay=>overlay.classList.remove("open"))}
+function changeQty(id,delta){const item=cart.find(x=>String(x.id)===String(id));if(!item)return;item.qty=Number(item.qty||1)+Number(delta);if(item.qty<=0)cart=cart.filter(x=>String(x.id)!==String(id));saveCart();renderCart()}
+function removeItem(id){cart=cart.filter(x=>String(x.id)!==String(id));saveCart();renderCart()}
 function openCart(){closeAll();renderCart();$("cartModal").classList.add("open")}
 function openCheckout(){if(!items().length)return;closeAll();$("checkoutModal").classList.add("open");refreshCheckoutSummary()}
 function placeOrder(){if(!items().length)return;openCheckout()}
