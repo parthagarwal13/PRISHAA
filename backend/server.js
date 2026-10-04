@@ -78,7 +78,7 @@ const app = express();
 const port = Number(process.env.PORT || 8787);
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-// PRISHAA promotional offer. Change these three values when you want a new campaign.
+// RangRiwaz promotional offer. Change these three values when you want a new campaign.
 app.use(express.json({ limit: "15mb" }));
 
 const upload = multer({
@@ -167,7 +167,7 @@ app.post("/api/upload-image", requireAdmin, upload.single("image"), async (req, 
     const result = await new Promise((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
         {
-          folder: "prishaa/products",
+          folder: "RangRiwaz/products",
           resource_type: "image"
         },
         (error, uploaded) => {
@@ -313,7 +313,7 @@ app.post("/api/orders", async (req,res)=>{
     const discount=0;
     const appliedCoupon="";
     const total=subtotal;
-    const code=`PRISHAA-${Math.random().toString(36).slice(2,8).toUpperCase()}`;
+    const code=`RangRiwaz-${Math.random().toString(36).slice(2,8).toUpperCase()}`;
     const order=await client.query(`INSERT INTO orders(order_code,customer_name,phone,address,city,state,pincode,total,status) VALUES($1,$2,$3,$4,$5,$6,$7,$8,'Pending') RETURNING id`,[code,c.name.trim(),c.phone.trim(),c.address.trim(),c.city.trim(),c.state.trim(),c.pincode.trim(),total]);
     for(const item of normalized) await client.query("INSERT INTO order_items(order_id,product_id,product_name,price,quantity) VALUES($1,$2,$3,$4,$5)",[Number(order.rows[0].id),item.productId,item.productName,item.price,item.quantity]);
     await client.query("COMMIT");
@@ -339,7 +339,7 @@ app.use("/user",express.static(path.join(ROOT,"user")));
 app.get("/",(_req,res)=>res.redirect("/user/"));
 app.use(express.static(ROOT));
 if (!process.env.VERCEL) {
-  app.listen(port,()=>console.log(`PRISHAA running on http://localhost:${port}`));
+  app.listen(port,()=>console.log(`RangRiwaz running on http://localhost:${port}`));
 }
 
 export default app;

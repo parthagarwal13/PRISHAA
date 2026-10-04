@@ -1,4 +1,4 @@
-# PRISHAA deploy on Render + Neon
+# RangRiwaz deploy on Render + Neon
 
 ## 1. Push this folder to GitHub
 Create a GitHub repository, then upload all files in this folder.

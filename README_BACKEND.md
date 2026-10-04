@@ -1,4 +1,4 @@
-# PRISHAA + Neon Backend Ready
+# RangRiwaz + Neon Backend Ready
 
 ## 1. Add your Neon connection string
 
@@ -16,7 +16,7 @@ npm install
 npm run check
 ```
 
-## 4. Seed the existing PRISHAA catalogue
+## 4. Seed the existing RangRiwaz catalogue
 
 ```bash
 npm run seed

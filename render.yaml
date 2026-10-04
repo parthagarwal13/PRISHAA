@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: prishaa-store
+    name: RangRiwaz-store
     runtime: node
     plan: free
     buildCommand: npm install

@@ -1,7 +1,7 @@
-PRISHAA FINAL LOADING FIX
+RangRiwaz FINAL LOADING FIX
 
 What was fixed:
-1. The user page no longer stays forever on "Opening PRISHAA...".
+1. The user page no longer stays forever on "Opening RangRiwaz...".
 2. The website now shows the real API/database error and a Try Again button.
 3. Missing Vercel environment variables no longer cause a silent endless frontend loop.
 4. Added /api/health for diagnostics.

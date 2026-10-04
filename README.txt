@@ -1,9 +1,9 @@
-PRISHAA FINAL - DIRECT FILE MODE
+RangRiwaz FINAL - DIRECT FILE MODE
 
 This is the final direct-open version.
 
 IMPORTANT:
-Do NOT use START_PRISHAA.bat.
+Do NOT use START_RangRiwaz.bat.
 Do NOT use fetch().
 Open:
   admin/index.html
@@ -73,19 +73,19 @@ LATEST FOOTER UPDATE: Removed duplicate contact number from footer and added a s
 LATEST UI UPDATE:
 Visit/contact information and brand identity are now combined in one single block:
 1. Address + contact
-2. PRISHAA
+2. RangRiwaz
 3. WOMEN'S COLLECTION
 4. Let your elegance speak for you
 5. by Priya & Shweta
 
-LATEST UI FIX: Removed duplicate address/contact block. Kept one combined section and repeated PRISHAA in matching handwritten style beneath WOMEN'S COLLECTION.
+LATEST UI FIX: Removed duplicate address/contact block. Kept one combined section and repeated RangRiwaz in matching handwritten style beneath WOMEN'S COLLECTION.
 
 
-LATEST FIX: Restored the single combined address/contact + PRISHAA brand block and removed only the duplicate address/contact block above it. The small PRISHAA hero label remains removed.
+LATEST FIX: Restored the single combined address/contact + RangRiwaz brand block and removed only the duplicate address/contact block above it. The small RangRiwaz hero label remains removed.
 
-LATEST FIX: Removed the upper duplicate address/contact and removed the duplicate PRISHAA text. One handwritten PRISHAA remains in the combined brand block.
+LATEST FIX: Removed the upper duplicate address/contact and removed the duplicate RangRiwaz text. One handwritten RangRiwaz remains in the combined brand block.
 
-LATEST FIX: Removed the remaining top standalone address section. The rest of the PRISHAA design is unchanged.
+LATEST FIX: Removed the remaining top standalone address section. The rest of the RangRiwaz design is unchanged.
 
 LATEST FIX: Removed the remaining duplicate standalone address section shown between the product grid and the brand block. The intended combined brand/contact block is unchanged.
 
@@ -93,14 +93,14 @@ LATEST FIX: Removed the remaining duplicate standalone address section shown bet
 LATEST FIX: Restored the physical visit address inside the checkout confirmation popup only. The standalone address section on the page remains removed.
 
 
-LATEST UI UPDATE: PRISHAA main brand name is now in a softer, more natural handwritten font.
+LATEST UI UPDATE: RangRiwaz main brand name is now in a softer, more natural handwritten font.
 
 
-LATEST UI UPDATE: PRISHAA main brand name now matches the uploaded clean bold sans-serif reference style, with a compact sans-serif WOMEN'S COLLECTION subtitle.
+LATEST UI UPDATE: RangRiwaz main brand name now matches the uploaded clean bold sans-serif reference style, with a compact sans-serif WOMEN'S COLLECTION subtitle.
 
-LATEST CHANGE: Removed the entire dark PRISHAA footer section from the user-facing pages. Everything else remains unchanged.
+LATEST CHANGE: Removed the entire dark RangRiwaz footer section from the user-facing pages. Everything else remains unchanged.
 
-LATEST UI UPDATE: Reversed the combined Visit/Contact and PRISHAA brand columns: PRISHAA brand is now on the left, address/contact on the right.
+LATEST UI UPDATE: Reversed the combined Visit/Contact and RangRiwaz brand columns: RangRiwaz brand is now on the left, address/contact on the right.
 
 LATEST UI UPDATE: Removed Track Order button and its unused modal/handler from the user panel.
 
@@ -136,6 +136,6 @@ LATEST HERO UPDATE: Replaced the first slideshow image with the newly uploaded h
 
 MOBILE HERO FIX: On screens <=650px the hero uses a fixed aspect ratio and contain mode so the full New Arrival image stays visible without cropping.
 
-Offer included: Flat 20% OFF with code PRISHAA20 on orders of ₹999+; maximum discount ₹500. Offer is validated on the backend.
+Offer included: Flat 20% OFF with code RANGRIWAZ20 on orders of ₹999+; maximum discount ₹500. Offer is validated on the backend.
 
 PRODUCT OFFERS: Added per-product Offer Active, Original Price, Offer %, and Offer Price. Run backend/migrations/add_product_offers.sql once in the Neon SQL editor before using the fields.

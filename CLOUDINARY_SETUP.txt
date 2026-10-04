@@ -1,4 +1,4 @@
-PRISHAA Cloudinary image storage
+RangRiwaz Cloudinary image storage
 
 1) Install dependencies:
    npm install

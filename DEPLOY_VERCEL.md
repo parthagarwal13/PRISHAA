@@ -1,4 +1,4 @@
-# PRISHAA — Vercel Deployment
+# RangRiwaz — Vercel Deployment
 
 This package uses the same Express + Neon backend and is prepared for Vercel.
 Vercel supports Express apps directly, so no separate frontend host is required.

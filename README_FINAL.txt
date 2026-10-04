@@ -1,4 +1,4 @@
-PRISHAA COMPLETE FINAL VERSION
+RangRiwaz COMPLETE FINAL VERSION
 
 What is included:
 - Full user website
