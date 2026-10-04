@@ -427,11 +427,12 @@ html,body{max-width:100%;overflow-x:hidden}
 <div id="detail" class="overlay"><div class="panel"><button class="close" onclick="closeAll()">×</button><div class="details"><img id="dimg"><div><div id="dcat" class="tag"></div><h2 id="dname"></h2><div id="dprice" class="price"></div><p id="ddesc"></p><p><b>Sizes:</b> <span id="dsize"></span></p><p id="dlengthRow" style="display:none"><b>Length:</b> <span id="dlength"></span></p><p><b>Colour:</b> <span id="dcolor"></span></p><p><b>Occasion:</b> <span id="docc"></span></p><button id="dadd" class="btn pink" style="width:100%">Add to Cart</button></div></div></div></div>
 <div id="cartModal" class="overlay"><div class="drawer"><button class="close" onclick="closeAll()">×</button><h2>Your Cart</h2><div id="cartRows"></div><div id="cartTotal"></div><button class="btn pink" style="width:100%;margin-top:10px" onclick="placeOrder()">Place Order</button></div></div>
 <div id="checkoutModal" class="overlay"><div class="panel"><button class="close" onclick="closeAll()">×</button><h2>Checkout</h2><form id="checkoutForm" class="form"><input id="name" required placeholder="Full name"><input id="email" type="email" required autocomplete="email" placeholder="Gmail / email address"><input id="phone" required pattern="[0-9]{10}" placeholder="10-digit phone"><textarea id="address" required placeholder="Full address"></textarea><div class="two"><input id="city" required placeholder="City"><input id="state" required placeholder="State"></div><input id="pincode" required pattern="[0-9]{6}" placeholder="Pincode"><div id="checkoutSummary" class="checkout-summary"></div><button class="btn pink">Place Order</button></form><div id="orderResult"></div></div></div></div>
-<div id="myOrdersModal" class="overlay"><div class="panel"><button class="close" onclick="closeAll()" aria-label="Close">×</button><h2>My Orders</h2><p style="color:#6c5861;line-height:1.5">Use the phone number and email address you entered at checkout to see your order history. For an order placed before email was added, you can use that order's ID instead.</p><form id="myOrdersForm" class="form"><input id="historyPhone" required inputmode="numeric" pattern="[0-9]{10}" maxlength="10" placeholder="10-digit phone number"><input id="historyEmail" type="email" autocomplete="email" placeholder="Gmail / email address"><input id="historyOrderCode" placeholder="Order ID (for older orders only)"><button class="btn pink">View Order History</button></form><div id="myOrdersResult" aria-live="polite"></div></div></div>
+<div id="myOrdersModal" class="overlay"><div class="panel"><button class="close" onclick="closeAll()" aria-label="Close">×</button><h2>My Orders</h2><p style="color:#6c5861;line-height:1.5">Enter the phone number and email address used at checkout to see your order history.</p><form id="myOrdersForm" class="form"><input id="historyPhone" required inputmode="numeric" pattern="[0-9]{10}" maxlength="10" placeholder="10-digit phone number"><input id="historyEmail" type="email" required autocomplete="email" placeholder="Gmail / email address"><button class="btn pink">View Order History</button></form><div id="myOrdersResult" aria-live="polite"></div></div></div>
 
 <script>
 const $=id=>document.getElementById(id);
 const money=n=>"₹"+Number(n||0).toLocaleString("en-IN");
+const priceHtml=p=>p.offerActive&&Number(p.originalPrice)>Number(p.price)?`<span class="offer-original">${money(p.originalPrice)}</span> <span class="offer-current">${money(p.price)}</span>`:money(p.price);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 function readSavedCart(){try{const saved=JSON.parse(localStorage.getItem("PRISHAA_CART")||"[]");return Array.isArray(saved)?saved.filter(item=>item&&Number.isFinite(Number(item.id))&&Number(item.id)>0).map(item=>({id:Number(item.id),qty:Math.max(1,Number(item.qty)||1)})):[]}catch{return []}}
 let products=[],category="All",cart=readSavedCart(),appliedCoupon="";
@@ -474,12 +475,12 @@ async function loadProducts(){
 function render(){
   const q=$("search").value.trim().toLowerCase();
   const list=products.filter(p=>(category==="All"||p.category===category)&&(!q||(p.name+" "+p.category+" "+p.color+" "+p.occasion).toLowerCase().includes(q)));
-  $("grid").innerHTML=list.map(p=>`<article class="card"><img src="${esc(p.image)}" alt="${esc(p.name)}" onerror="this.src='https://via.placeholder.com/700x800?text=RangRiwaz'"><div class="body"><div class="tag">${esc(p.category)}</div><h3>${esc(p.name)}</h3><div>${esc(p.color||"")}</div><div class="price">${money(p.price)}</div><button class="view" onclick="showProduct(${p.id})">View Details</button><button class="add" onclick="addToCart(${p.id})">Add to Cart</button></div></article>`).join("")||'<div style="grid-column:1/-1;text-align:center;padding:50px">No products found.</div>';
+  $("grid").innerHTML=list.map(p=>`<article class="card"><img src="${esc(p.image)}" alt="${esc(p.name)}" onerror="this.src='https://via.placeholder.com/700x800?text=RangRiwaz'"><div class="body"><div class="tag">${esc(p.category)}</div><h3>${esc(p.name)}</h3><div>${esc(p.color||"")}</div><div class="price">${priceHtml(p)}</div><button class="view" onclick="showProduct(${p.id})">View Details</button><button class="add" onclick="addToCart(${p.id})">Add to Cart</button></div></article>`).join("")||'<div style="grid-column:1/-1;text-align:center;padding:50px">No products found.</div>';
 }
 function setCat(c,b){category=c;document.querySelectorAll(".filter").forEach(x=>x.classList.remove("active"));b.classList.add("active");render()}
 function showProduct(id){
   const p=products.find(x=>x.id===id);if(!p)return;closeAll();
-  $("dimg").src=p.image;$("dcat").textContent=p.category;$("dname").textContent=p.name;$("dprice").textContent=money(p.price);$("ddesc").textContent=p.description;$("dsize").textContent=p.size||"";$("dlength").textContent=p.length||"";$("dlengthRow").style.display=p.length?"block":"none";$("dcolor").textContent=p.color||"";$("docc").textContent=p.occasion||"";
+  $("dimg").src=p.image;$("dcat").textContent=p.category;$("dname").textContent=p.name;$("dprice").innerHTML=priceHtml(p);$("ddesc").textContent=p.description;$("dsize").textContent=p.size||"";$("dlength").textContent=p.length||"";$("dlengthRow").style.display=p.length?"block":"none";$("dcolor").textContent=p.color||"";$("docc").textContent=p.occasion||"";
   $("dadd").onclick=()=>{addToCart(id);closeAll();openCart()};$("detail").classList.add("open");
 }
 function saveCart(){localStorage.setItem("PRISHAA_CART",JSON.stringify(cart));const count=$("count");if(count)count.textContent=cart.reduce((s,x)=>s+(Number(x.qty)||0),0)}
@@ -493,7 +494,7 @@ function renderCart(){
   const cartTotal=$("cartTotal");
 
   if(cartItems){
-    cartItems.innerHTML=a.map(({x,p})=>`<div class="cartrow"><img src="${esc(p.image)}" alt="${esc(p.name)}"><div><b>${esc(p.name)}</b><div>${money(p.price)}</div><div class="qty"><button type="button" aria-label="Decrease quantity" onclick="changeQty(${p.id},-1)">−</button><b>${Number(x.qty)||1}</b><button type="button" aria-label="Increase quantity" onclick="changeQty(${p.id},1)">+</button></div></div><button type="button" class="remove" onclick="removeItem(${p.id})">Remove</button></div>`).join("")||"<p>Your cart is empty.</p>";
+    cartItems.innerHTML=a.map(({x,p})=>`<div class="cartrow"><img src="${esc(p.image)}" alt="${esc(p.name)}"><div><b>${esc(p.name)}</b><div>${priceHtml(p)}</div><div class="qty"><button type="button" aria-label="Decrease quantity" onclick="changeQty(${p.id},-1)">−</button><b>${Number(x.qty)||1}</b><button type="button" aria-label="Increase quantity" onclick="changeQty(${p.id},1)">+</button></div></div><button type="button" class="remove" onclick="removeItem(${p.id})">Remove</button></div>`).join("")||"<p>Your cart is empty.</p>";
   }
   if(cartTotal){
     cartTotal.innerHTML=a.length?`<div style="padding:10px 0;font-size:20px;font-weight:800">Total: ${money(subtotal)}</div>`:"";
@@ -513,12 +514,10 @@ function renderMyOrders(orders){
 }
 const myOrdersForm=$("myOrdersForm");
 if(myOrdersForm) myOrdersForm.onsubmit=async event=>{
-  event.preventDefault();const target=$("myOrdersResult"),email=$("historyEmail").value.trim(),orderCode=$("historyOrderCode").value.trim();
-  if(!email&&!orderCode){target.innerHTML='<p style="color:#b22">Enter your checkout email, or an order ID for an older order.</p>';return}
-  target.innerHTML='<p>Loading your orders…</p>';
-  try{const orders=await api("/api/my-orders",{method:"POST",body:JSON.stringify({phone:$("historyPhone").value.trim(),email,orderCode})});renderMyOrders(orders)}catch(error){target.innerHTML=`<p style="color:#b22">${esc(error.message)}</p>`}
+  event.preventDefault();const target=$("myOrdersResult");target.innerHTML='<p>Loading your orders…</p>';
+  try{const orders=await api("/api/my-orders",{method:"POST",body:JSON.stringify({phone:$("historyPhone").value.trim(),email:$("historyEmail").value.trim()})});renderMyOrders(orders)}catch(error){target.innerHTML=`<p style="color:#b22">${esc(error.message)}</p>`}
 };
-function openMyOrders(phone,email){closeAll();$("historyPhone").value=phone;$("historyEmail").value=email;$("historyOrderCode").value="";$("myOrdersModal").classList.add("open");myOrdersForm.requestSubmit()}
+function openMyOrders(phone,email){closeAll();$("historyPhone").value=phone;$("historyEmail").value=email;$("myOrdersModal").classList.add("open");myOrdersForm.requestSubmit()}
 function openCheckout(){if(!items().length)return;closeAll();$("checkoutModal").classList.add("open");refreshCheckoutSummary()}
 function placeOrder(){if(!items().length)return;openCheckout()}
 function refreshCheckoutSummary(){

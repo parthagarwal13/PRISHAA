@@ -273,6 +273,9 @@ app.post("/api/products", requireAdmin, async (req,res)=>{
     if(!Number.isFinite(originalPrice)||originalPrice<0)
       return res.status(400).json({error:"Enter a valid original price."});
 
+    if(p.price != null && Number(p.price) > originalPrice)
+      return res.status(400).json({error:"Sale price must be less than or equal to the original price."});
+
     if(offerActive){
       if(offerPrice==null && offerPercent>0)
         offerPrice=Math.max(0,originalPrice-(originalPrice*offerPercent/100));
@@ -312,6 +315,9 @@ app.put("/api/products/:id", requireAdmin, async (req,res)=>{
     if(!Number.isFinite(originalPrice)||originalPrice<0)
       return res.status(400).json({error:"Enter a valid original price."});
 
+    if(p.price != null && Number(p.price) > originalPrice)
+      return res.status(400).json({error:"Sale price must be less than or equal to the original price."});
+
     if(offerActive){
       if(offerPrice==null && offerPercent>0)
         offerPrice=Math.max(0,originalPrice-(originalPrice*offerPercent/100));
@@ -348,14 +354,12 @@ app.get("/api/orders", requireAdmin, async (_req,res)=>{try{res.json(await listO
 app.post("/api/my-orders", async (req,res)=>{
   const phone=String(req.body?.phone||"").replace(/\D/g,"");
   const email=String(req.body?.email||"").trim().toLowerCase();
-  const orderCode=String(req.body?.orderCode||"").trim();
-  if(!/^\d{10}$/.test(phone)||(!/^\S+@\S+\.\S+$/.test(email)&&!orderCode)) return res.status(400).json({error:"Enter your 10-digit phone number and your email address."});
+  if(!/^\d{10}$/.test(phone)||!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({error:"Enter your 10-digit phone number and a valid email address."});
   try{
     await schemaReady;
-    const legacyOnly=!/^\S+@\S+\.\S+$/.test(email);
-    const verified=await pool.query("SELECT id FROM orders WHERE regexp_replace(phone,'\\D','','g')=$1 AND (($2<>'' AND lower(customer_email)=$2) OR ($3<>'' AND customer_email='' AND order_code=$3)) LIMIT 1",[phone,email,orderCode]);
+    const verified=await pool.query("SELECT id FROM orders WHERE regexp_replace(phone,'\\D','','g')=$1 AND lower(customer_email)=$2 LIMIT 1",[phone,email]);
     if(!verified.rowCount) return res.status(404).json({error:"We couldn't find orders for those details. Check your phone number and email."});
-    const orders=await pool.query(`SELECT id,order_code,customer_name,customer_email,phone,address,city,state,pincode,total,status,created_at FROM orders WHERE regexp_replace(phone,'\\D','','g')=$1 ${legacyOnly?"":"AND lower(customer_email)=$2"} ORDER BY created_at DESC,id DESC`,legacyOnly?[phone]:[phone,email]);
+    const orders=await pool.query("SELECT id,order_code,customer_name,customer_email,phone,address,city,state,pincode,total,status,created_at FROM orders WHERE regexp_replace(phone,'\\D','','g')=$1 AND lower(customer_email)=$2 ORDER BY created_at DESC,id DESC",[phone,email]);
     const orderIds=orders.rows.map(order=>Number(order.id));
     const itemRows=orderIds.length?await pool.query("SELECT order_id,product_id,product_name,price,quantity FROM order_items WHERE order_id=ANY($1::bigint[]) ORDER BY id ASC",[orderIds]):{rows:[]};
     const itemsByOrder=new Map();
