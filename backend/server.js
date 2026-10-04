@@ -295,6 +295,22 @@ app.delete("/api/products/:id", requireAdmin, async (req,res)=>{
 
 app.get("/api/orders", requireAdmin, async (_req,res)=>{try{res.json(await listOrders())}catch(e){res.status(500).json({error:e.message})}});
 
+app.post("/api/my-orders", async (req,res)=>{
+  const phone=String(req.body?.phone||"").replace(/\D/g,"");
+  const orderCode=String(req.body?.orderCode||"").trim();
+  if(!/^\d{10}$/.test(phone)||!orderCode) return res.status(400).json({error:"Enter your 10-digit phone number and an order ID."});
+  try{
+    const verified=await pool.query("SELECT id FROM orders WHERE regexp_replace(phone,'\\D','','g')=$1 AND order_code=$2 LIMIT 1",[phone,orderCode]);
+    if(!verified.rowCount) return res.status(404).json({error:"We couldn't verify those details. Check your phone number and order ID."});
+    const orders=await pool.query("SELECT id,order_code,customer_name,phone,address,city,state,pincode,total,status,created_at FROM orders WHERE regexp_replace(phone,'\\D','','g')=$1 ORDER BY created_at DESC,id DESC",[phone]);
+    const orderIds=orders.rows.map(order=>Number(order.id));
+    const itemRows=orderIds.length?await pool.query("SELECT order_id,product_id,product_name,price,quantity FROM order_items WHERE order_id=ANY($1::bigint[]) ORDER BY id ASC",[orderIds]):{rows:[]};
+    const itemsByOrder=new Map();
+    for(const item of itemRows.rows){const id=Number(item.order_id);if(!itemsByOrder.has(id))itemsByOrder.set(id,[]);itemsByOrder.get(id).push({productId:Number(item.product_id),productName:item.product_name,price:Number(item.price),quantity:Number(item.quantity)});}
+    res.json(orders.rows.map(order=>({id:Number(order.id),orderCode:order.order_code,customerName:order.customer_name,phone:order.phone,address:order.address,city:order.city,state:order.state,pincode:order.pincode,total:Number(order.total),status:order.status,createdAt:order.created_at,items:itemsByOrder.get(Number(order.id))||[]})));
+  }catch(e){res.status(500).json({error:"Couldn't load your orders right now."})}
+});
+
 app.post("/api/orders", async (req,res)=>{
   const c=req.body?.customer||{},items=Array.isArray(req.body?.items)?req.body.items:[];
   if(!c.name?.trim()||!c.phone?.trim()||!c.address?.trim()||!c.city?.trim()||!c.state?.trim()||!c.pincode?.trim()) return res.status(400).json({error:"Please fill all customer and delivery details."});
