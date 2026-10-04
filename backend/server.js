@@ -353,7 +353,7 @@ app.post("/api/payments/create-order", async (req,res)=>{
     const razorpayOrder=await razorpayClient.orders.create({amount,currency:"INR",receipt:`rr_${crypto.randomBytes(12).toString("hex")}`});
     await pool.query("INSERT INTO payment_sessions(razorpay_order_id,customer,items,amount) VALUES($1,$2::jsonb,$3::jsonb,$4)",[razorpayOrder.id,JSON.stringify(customer),JSON.stringify(normalized),amount]);
     res.status(201).json({keyId:RAZORPAY_KEY_ID,razorpayOrderId:razorpayOrder.id,amount:razorpayOrder.amount,currency:razorpayOrder.currency});
-  }catch(e){const status=e?.statusCode===401?401:/Please fill|Cart is empty|Invalid cart|not found|at least ₹1/.test(e.message)?400:500;res.status(status).json({error:e?.statusCode===401?"Razorpay rejected the server API keys. Check the configured test mode credentials.":e.message||"Could not start payment."})}
+  }catch(e){const authFailed=Number(e?.statusCode)===401;if(authFailed) console.error("Razorpay authentication failed while creating an order.");const status=authFailed?401:/Please fill|Cart is empty|Invalid cart|not found|at least ₹1/.test(e.message)?400:500;res.status(status).json({error:authFailed?"Razorpay rejected the server API keys. Check that both Test Mode keys are current and from the same account.":e.message||"Could not start payment."})}
 });
 
 app.post("/api/payments/verify", async (req,res)=>{
@@ -388,7 +388,7 @@ app.post("/api/payments/verify", async (req,res)=>{
     for(const item of items) await client.query("INSERT INTO order_items(order_id,product_id,product_name,price,quantity) VALUES($1,$2,$3,$4,$5)",[Number(order.rows[0].id),item.productId,item.productName,item.price,item.quantity]);
     await client.query("DELETE FROM payment_sessions WHERE razorpay_order_id=$1",[orderId]);await client.query("COMMIT");
     res.json({success:true,orderCode:code,total});
-  }catch(e){if(client) await client.query("ROLLBACK").catch(()=>{});console.error("Razorpay verification failed:",e);const authFailed=e?.statusCode===401;res.status(authFailed?401:500).json({error:authFailed?"Razorpay rejected the server API keys. Check the configured test mode credentials.":"Payment was received, but order confirmation failed. Contact the store with your Razorpay payment ID."});}
+  }catch(e){if(client) await client.query("ROLLBACK").catch(()=>{});const authFailed=Number(e?.statusCode)===401;console.error(authFailed?"Razorpay authentication failed while verifying a payment.":"Razorpay verification failed:",authFailed?"Check the configured Test Mode keys.":e);res.status(authFailed?401:500).json({error:authFailed?"Razorpay rejected the server API keys. Check that both Test Mode keys are current and from the same account.":"Payment was received, but order confirmation failed. Contact the store with your Razorpay payment ID."});}
   finally{client?.release();}
 });
 

@@ -445,8 +445,8 @@ async function api(path,options={}){
   for(let attempt=0;attempt<maxAttempts;attempt++){
     try{
       const r=await fetch(path,{cache:"no-store",...options,headers:{"Content-Type":"application/json",...(options.headers||{})}});
-      if(r.status===401) throw new Error(path.startsWith("/api/payments/")?"Razorpay rejected the server credentials. Please try again later.":"Admin login required.");
       const d=await r.json().catch(()=>({}));
+      if(r.status===401) throw new Error(path.startsWith("/api/payments/")?(d.error||"Razorpay rejected the server credentials. Check the server Test Mode keys."):(d.error||"Admin login required."));
       if(r.ok) return d;
       lastError=new Error(d.error||`Request failed (${r.status})`);
       if(![502,503,504].includes(r.status)||attempt===maxAttempts-1) throw lastError;
