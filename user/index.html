@@ -339,6 +339,7 @@ html,body{max-width:100%;overflow-x:hidden}
 .offer-original{text-decoration:line-through;color:#9a8a91;font-size:15px;font-weight:600}
 .offer-current{color:#aa3d69;font-size:21px;font-weight:800}
 .offer-badge{display:inline-block;background:#aa3d69;color:#fff;font-size:11px;font-weight:800;padding:4px 7px;border-radius:999px}
+.featured-tag{display:inline-block;background:#f3dfe8;color:#7d2c4d;font-size:11px;font-weight:800;padding:5px 9px;border-radius:999px;margin-bottom:7px}
 .order-history-list{display:grid;gap:14px;margin-top:18px}.history-card{border:1px solid #eadbe2;border-radius:16px;padding:16px;background:#fff}.history-top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:start}.history-status{display:inline-block;border-radius:999px;background:#f4dfe8;color:#7d2c4d;padding:5px 10px;font-size:12px;font-weight:800}.history-items{border-top:1px solid #eee;margin-top:12px;padding-top:10px}.history-item{display:flex;justify-content:space-between;gap:12px;padding:5px 0;color:#55434b}.history-total{display:flex;justify-content:space-between;border-top:1px solid #eee;margin-top:10px;padding-top:10px;font-weight:800}.history-delivery{color:#6c5861;font-size:13px;line-height:1.5;margin-top:10px}
 
 </style></head><body>
@@ -474,8 +475,8 @@ async function loadProducts(){
 }
 function render(){
   const q=$("search").value.trim().toLowerCase();
-  const list=products.filter(p=>(category==="All"||p.category===category)&&(!q||(p.name+" "+p.category+" "+p.color+" "+p.occasion).toLowerCase().includes(q)));
-  $("grid").innerHTML=list.map(p=>`<article class="card"><img src="${esc(p.image)}" alt="${esc(p.name)}" onerror="this.src='https://via.placeholder.com/700x800?text=RangRiwaz'"><div class="body"><div class="tag">${esc(p.category)}</div><h3>${esc(p.name)}</h3><div>${esc(p.color||"")}</div><div class="price">${priceHtml(p)}</div><button class="view" onclick="showProduct(${p.id})">View Details</button><button class="add" onclick="addToCart(${p.id})">Add to Cart</button></div></article>`).join("")||'<div style="grid-column:1/-1;text-align:center;padding:50px">No products found.</div>';
+  const list=products.filter(p=>(category==="All"||p.category===category)&&(!q||(p.name+" "+p.category+" "+p.color+" "+p.occasion).toLowerCase().includes(q))).sort((a,b)=>Number(!!b.featured)-Number(!!a.featured));
+  $("grid").innerHTML=list.map(p=>`<article class="card"><img src="${esc(p.image)}" alt="${esc(p.name)}" onerror="this.src='https://via.placeholder.com/700x800?text=RangRiwaz'"><div class="body">${p.featured?'<div class="featured-tag">Featured Product</div>':""}<div class="tag">${esc(p.category)}</div><h3>${esc(p.name)}</h3><div>${esc(p.color||"")}</div><div class="price">${priceHtml(p)}</div><button class="view" onclick="showProduct(${p.id})">View Details</button><button class="add" onclick="addToCart(${p.id})">Add to Cart</button></div></article>`).join("")||'<div style="grid-column:1/-1;text-align:center;padding:50px">No products found.</div>';
 }
 function setCat(c,b){category=c;document.querySelectorAll(".filter").forEach(x=>x.classList.remove("active"));b.classList.add("active");render()}
 function showProduct(id){

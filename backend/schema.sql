@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS products (
     occasion TEXT,
     image_url TEXT NOT NULL,
     description TEXT,
+    featured BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

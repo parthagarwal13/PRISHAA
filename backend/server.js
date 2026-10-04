@@ -77,7 +77,10 @@ function requireAdmin(req, res, next) {
 const app = express();
 const port = Number(process.env.PORT || 8787);
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const schemaReady = pool.query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_email TEXT NOT NULL DEFAULT ''").catch(error=>{console.error("Order email schema setup failed:",error.message);throw error});
+const schemaReady = pool.query("ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_email TEXT NOT NULL DEFAULT ''")
+  .then(()=>pool.query("ALTER TABLE products ADD COLUMN IF NOT EXISTS featured BOOLEAN DEFAULT FALSE"))
+  .then(()=>pool.query("UPDATE products SET featured=FALSE WHERE featured IS NULL"))
+  .catch(error=>{console.error("Database schema setup failed:",error.message);throw error});
 
 // RangRiwaz promotional offer. Change these three values when you want a new campaign.
 app.use(express.json({ limit: "15mb" }));
@@ -95,13 +98,14 @@ cloudinary.config({
 
 const normalizeProduct = row => ({
   id: Number(row.id), name: row.name, category: row.category,
-  price: Number(row.price), originalPrice: Number(row.original_price ?? row.price), offerActive: !!row.offer_active, offerPercent: Number(row.offer_percent || 0), offerPrice: row.offer_price != null ? Number(row.offer_price) : null, size: row.size || "", length: row.length || "",
+  price: Number(row.price), originalPrice: Number(row.original_price ?? row.price), offerActive: !!row.offer_active, offerPercent: Number(row.offer_percent || 0), offerPrice: row.offer_price != null ? Number(row.offer_price) : null, featured: !!row.featured, size: row.size || "", length: row.length || "",
   color: row.color || "", occasion: row.occasion || "", image: row.image_url,
   description: row.description || "", createdAt: row.created_at
 });
 
 async function listProducts(){
-  const r = await pool.query("SELECT id,name,category,price,original_price,offer_active,offer_percent,offer_price,size,length,color,occasion,image_url,description,created_at FROM products ORDER BY created_at DESC,id DESC");
+  await schemaReady;
+  const r = await pool.query("SELECT id,name,category,price,original_price,offer_active,offer_percent,offer_price,featured,size,length,color,occasion,image_url,description,created_at FROM products ORDER BY featured DESC,created_at DESC,id DESC");
   return r.rows.map(normalizeProduct);
 }
 
@@ -224,12 +228,12 @@ app.post("/api/products", requireAdmin, async (req,res)=>{
     const sellingPrice = offerActive ? offerPrice : originalPrice;
 
     const r=await pool.query(
-      `INSERT INTO products(name,category,price,original_price,offer_active,offer_percent,offer_price,size,length,color,occasion,image_url,description)
-       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
-       RETURNING id,name,category,price,original_price,offer_active,offer_percent,offer_price,size,length,color,occasion,image_url,description,created_at`,
+      `INSERT INTO products(name,category,price,original_price,offer_active,offer_percent,offer_price,featured,size,length,color,occasion,image_url,description)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+       RETURNING id,name,category,price,original_price,offer_active,offer_percent,offer_price,featured,size,length,color,occasion,image_url,description,created_at`,
       [
         p.name.trim(), p.category||"Suits", sellingPrice, originalPrice, offerActive,
-        offerPercent, offerPrice, p.size?.trim()||"", p.length?.trim()||"",
+        offerPercent, offerPrice, !!p.featured, p.size?.trim()||"", p.length?.trim()||"",
         p.color?.trim()||"", p.occasion?.trim()||"", p.image.trim(), p.description?.trim()||""
       ]
     );
@@ -273,11 +277,11 @@ app.put("/api/products/:id", requireAdmin, async (req,res)=>{
     const r=await pool.query(
       `UPDATE products
        SET name=$1,category=$2,price=$3,original_price=$4,offer_active=$5,offer_percent=$6,offer_price=$7,
-           size=$8,length=$9,color=$10,occasion=$11,image_url=$12,description=$13
-       WHERE id=$14
-       RETURNING id,name,category,price,original_price,offer_active,offer_percent,offer_price,size,length,color,occasion,image_url,description,created_at`,
+           featured=$8,size=$9,length=$10,color=$11,occasion=$12,image_url=$13,description=$14
+       WHERE id=$15
+       RETURNING id,name,category,price,original_price,offer_active,offer_percent,offer_price,featured,size,length,color,occasion,image_url,description,created_at`,
       [
-        p.name.trim(), p.category||"Suits", sellingPrice, originalPrice, offerActive, offerPercent, offerPrice,
+        p.name.trim(), p.category||"Suits", sellingPrice, originalPrice, offerActive, offerPercent, offerPrice, !!p.featured,
         p.size?.trim()||"", p.length?.trim()||"", p.color?.trim()||"",
         p.occasion?.trim()||"", image, p.description?.trim()||"", id
       ]
