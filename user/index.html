@@ -295,6 +295,13 @@ nav{position:sticky;top:0;z-index:10;background:#fff;padding:15px 6%;display:fle
   opacity:0;
   transition:opacity .9s ease;
 }
+/* Keep the slide image sized to its viewport, overriding the generic hero img height. */
+.hero-slideshow .hero-slide{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  object-position:center;
+}
 .hero-slide.active{
   opacity:1;
 }
@@ -325,7 +332,7 @@ html,body{max-width:100%;overflow-x:hidden}
     border-radius: 22px;
   }
 
-  .hero-slide {
+  .hero-slideshow .hero-slide {
     width: 100%;
     height: 100%;
     object-fit: contain;
