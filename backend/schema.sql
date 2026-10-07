@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS products (
     description TEXT,
     featured BOOLEAN NOT NULL DEFAULT FALSE,
     stock_out BOOLEAN NOT NULL DEFAULT FALSE,
+    images JSONB NOT NULL DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
