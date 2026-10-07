@@ -341,7 +341,7 @@ html,body{max-width:100%;overflow-x:hidden}
 
 
 .offer-price-row{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-.stock-badge{display:inline-block;vertical-align:middle;margin-left:6px;padding:4px 8px;border-radius:999px;font-size:11px;line-height:1.2;font-weight:800;letter-spacing:.1px}.stock-in{background:#e9f6ed;color:#287341}.stock-limited{background:#fff3dc;color:#8a5a00}.stock-out{background:#fde8e8;color:#a12c35}
+.stock-badge{position:absolute;top:10px;right:10px;z-index:2;padding:4px 7px;background:rgba(255,255,255,.94);color:#111;font-size:10px;line-height:1.2;font-weight:700;border-radius:3px;letter-spacing:.1px}
 .card button:disabled{opacity:.65;cursor:not-allowed}
 .offer-original{text-decoration:line-through;color:#9a8a91;font-size:15px;font-weight:600}
 .offer-current{color:#aa3d69;font-size:21px;font-weight:800}
@@ -442,7 +442,7 @@ html,body{max-width:100%;overflow-x:hidden}
 const $=id=>document.getElementById(id);
 const money=n=>"₹"+Number(n||0).toLocaleString("en-IN");
 const priceHtml=p=>p.offerActive&&Number(p.originalPrice)>Number(p.price)?`<span class="offer-original">${money(p.originalPrice)}</span> <span class="offer-current">${money(p.price)}</span>`:money(p.price);
-const stockBadgeHtml=p=>{const status=p.stockStatus||"In Stock",kind=status==="Out of Stock"?"out":status==="Limited Stock"?"limited":"in";return `<span class="stock-badge stock-${kind}">${esc(status)}</span>`};
+const stockBadgeHtml=p=>p.stockOut?'<span class="stock-badge">Stock Out</span>':"";
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 function readSavedCart(){try{const saved=JSON.parse(localStorage.getItem("PRISHAA_CART")||"[]");return Array.isArray(saved)?saved.filter(item=>item&&Number.isFinite(Number(item.id))&&Number(item.id)>0).map(item=>({id:Number(item.id),qty:Math.max(1,Number(item.qty)||1)})):[]}catch{return []}}
 let products=[],category="All",cart=readSavedCart(),appliedCoupon="";
@@ -485,16 +485,16 @@ async function loadProducts(){
 function render(){
   const q=$("search").value.trim().toLowerCase();
   const list=products.filter(p=>(category==="All"||p.category===category)&&(!q||(p.name+" "+p.category+" "+p.color+" "+p.occasion).toLowerCase().includes(q))).sort((a,b)=>Number(!!b.featured)-Number(!!a.featured));
-  $("grid").innerHTML=list.map(p=>`<article class="card"><div class="card-media">${p.featured?'<div class="featured-tag">FEATURED</div>':""}<img src="${esc(p.image)}" alt="${esc(p.name)}" onerror="this.src='https://via.placeholder.com/700x800?text=RangRiwaz'"></div><div class="body"><div class="tag">${esc(p.category)}</div><h3>${esc(p.name)}</h3><div>${esc(p.color||"")}</div><div class="price">${priceHtml(p)} ${stockBadgeHtml(p)}</div><button class="view" onclick="showProduct(${p.id})">View Details</button><button class="add" onclick="addToCart(${p.id})" ${p.stockStatus==="Out of Stock"?"disabled":""}>${p.stockStatus==="Out of Stock"?"Out of Stock":"Add to Cart"}</button></div></article>`).join("")||'<div style="grid-column:1/-1;text-align:center;padding:50px">No products found.</div>';
+  $("grid").innerHTML=list.map(p=>`<article class="card"><div class="card-media">${p.featured?'<div class="featured-tag">FEATURED</div>':""}${stockBadgeHtml(p)}<img src="${esc(p.image)}" alt="${esc(p.name)}" onerror="this.src='https://via.placeholder.com/700x800?text=RangRiwaz'"></div><div class="body"><div class="tag">${esc(p.category)}</div><h3>${esc(p.name)}</h3><div>${esc(p.color||"")}</div><div class="price">${priceHtml(p)}</div><button class="view" onclick="showProduct(${p.id})">View Details</button><button class="add" onclick="addToCart(${p.id})" ${p.stockOut?"disabled":""}>Add to Cart</button></div></article>`).join("")||'<div style="grid-column:1/-1;text-align:center;padding:50px">No products found.</div>';
 }
 function setCat(c,b){category=c;document.querySelectorAll(".filter").forEach(x=>x.classList.remove("active"));b.classList.add("active");render()}
 function showProduct(id){
   const p=products.find(x=>x.id===id);if(!p)return;closeAll();
-  $("dimg").src=p.image;$("dcat").textContent=p.category;$("dname").textContent=p.name;$("dprice").innerHTML=priceHtml(p)+" "+stockBadgeHtml(p);$("ddesc").textContent=p.description;$("dsize").textContent=p.size||"";$("dlength").textContent=p.length||"";$("dlengthRow").style.display=p.length?"block":"none";$("dcolor").textContent=p.color||"";$("docc").textContent=p.occasion||"";
-  $("dadd").disabled=p.stockStatus==="Out of Stock";$("dadd").textContent=p.stockStatus==="Out of Stock"?"Out of Stock":"Add to Cart";$("dadd").onclick=()=>{if(p.stockStatus==="Out of Stock")return;addToCart(id);closeAll();openCart()};$("detail").classList.add("open");
+  $("dimg").src=p.image;$("dcat").textContent=p.category;$("dname").textContent=p.name;$("dprice").innerHTML=priceHtml(p);$("ddesc").textContent=p.description;$("dsize").textContent=p.size||"";$("dlength").textContent=p.length||"";$("dlengthRow").style.display=p.length?"block":"none";$("dcolor").textContent=p.color||"";$("docc").textContent=p.occasion||"";
+  $("dadd").disabled=p.stockOut;$("dadd").textContent="Add to Cart";$("dadd").onclick=()=>{if(p.stockOut)return;addToCart(id);closeAll();openCart()};$("detail").classList.add("open");
 }
 function saveCart(){localStorage.setItem("PRISHAA_CART",JSON.stringify(cart));const count=$("count");if(count)count.textContent=cart.reduce((s,x)=>s+(Number(x.qty)||0),0)}
-function addToCart(id){const product=products.find(p=>String(p.id)===String(id));if(!product||product.stockStatus==="Out of Stock")return;const x=cart.find(i=>String(i.id)===String(id));x?x.qty++:cart.push({id:Number(id),qty:1});saveCart();renderCart()}
+function addToCart(id){const product=products.find(p=>String(p.id)===String(id));if(!product||product.stockOut)return;const x=cart.find(i=>String(i.id)===String(id));x?x.qty++:cart.push({id:Number(id),qty:1});saveCart();renderCart()}
 function items(){return cart.map(x=>({x,p:products.find(p=>String(p.id)===String(x.id))})).filter(v=>v.p)}
 function total(){return items().reduce((s,v)=>s+Number(v.p.price||0)*Number(v.x.qty||0),0)}
 function calculateDiscount(_subtotal){ return 0; }
