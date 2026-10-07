@@ -101,6 +101,7 @@ const schemaReady = pool.query(`
   ALTER TABLE products ADD COLUMN IF NOT EXISTS offer_percent NUMERIC(5,2) DEFAULT 0;
   ALTER TABLE products ADD COLUMN IF NOT EXISTS offer_price NUMERIC(12,2);
   ALTER TABLE products ADD COLUMN IF NOT EXISTS featured BOOLEAN DEFAULT FALSE;
+  ALTER TABLE products ADD COLUMN IF NOT EXISTS stock_status TEXT NOT NULL DEFAULT 'In Stock';
   ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_id TEXT;
   ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method TEXT NOT NULL DEFAULT '';
   CREATE UNIQUE INDEX IF NOT EXISTS orders_payment_id_unique ON orders(payment_id) WHERE payment_id IS NOT NULL;
@@ -149,14 +150,14 @@ cloudinary.config({
 
 const normalizeProduct = row => ({
   id: Number(row.id), name: row.name, category: row.category,
-  price: Number(row.price), originalPrice: Number(row.original_price ?? row.price), offerActive: !!row.offer_active, offerPercent: Number(row.offer_percent || 0), offerPrice: row.offer_price != null ? Number(row.offer_price) : null, featured: !!row.featured, size: row.size || "", length: row.length || "",
+  price: Number(row.price), originalPrice: Number(row.original_price ?? row.price), offerActive: !!row.offer_active, offerPercent: Number(row.offer_percent || 0), offerPrice: row.offer_price != null ? Number(row.offer_price) : null, featured: !!row.featured, stockStatus: row.stock_status || "In Stock", size: row.size || "", length: row.length || "",
   color: row.color || "", occasion: row.occasion || "", image: row.image_url,
   description: row.description || "", createdAt: row.created_at
 });
 
 async function listProducts(){
   await schemaReady;
-  const r = await pool.query("SELECT id,name,category,price,original_price,offer_active,offer_percent,offer_price,featured,size,length,color,occasion,image_url,description,created_at FROM products ORDER BY featured DESC,created_at DESC,id DESC");
+  const r = await pool.query("SELECT id,name,category,price,original_price,offer_active,offer_percent,offer_price,featured,stock_status,size,length,color,occasion,image_url,description,created_at FROM products ORDER BY featured DESC,created_at DESC,id DESC");
   return r.rows.map(normalizeProduct);
 }
 
@@ -279,6 +280,8 @@ app.post("/api/products", requireAdmin, async (req,res)=>{
   try{
     await schemaReady;
     const p=req.body||{};
+    const stockStatus=p.stockStatus||"In Stock";
+    if(!["In Stock","Limited Stock","Out of Stock"].includes(stockStatus)) return res.status(400).json({error:"Choose a valid stock status."});
     if(!p.name?.trim()) return res.status(400).json({error:"Product name is required."});
     if(!p.image?.trim()) return res.status(400).json({error:"Please select a product image."});
 
@@ -306,10 +309,10 @@ app.post("/api/products", requireAdmin, async (req,res)=>{
     const sellingPrice=offerActive?offerPrice:originalPrice;
 
     const r=await pool.query(
-      `INSERT INTO products(name,category,price,original_price,offer_active,offer_percent,offer_price,featured,size,length,color,occasion,image_url,description)
-       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
-       RETURNING id,name,category,price,original_price,offer_active,offer_percent,offer_price,featured,size,length,color,occasion,image_url,description,created_at`,
-      [p.name.trim(),p.category||"Lehengas",sellingPrice,originalPrice,offerActive,offerPercent,offerPrice,!!p.featured,p.size?.trim()||"",p.length?.trim()||"",p.color?.trim()||"",p.occasion?.trim()||"",p.image.trim(),p.description?.trim()||""]
+      `INSERT INTO products(name,category,price,original_price,offer_active,offer_percent,offer_price,featured,stock_status,size,length,color,occasion,image_url,description)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+       RETURNING id,name,category,price,original_price,offer_active,offer_percent,offer_price,featured,stock_status,size,length,color,occasion,image_url,description,created_at`,
+      [p.name.trim(),p.category||"Lehengas",sellingPrice,originalPrice,offerActive,offerPercent,offerPrice,!!p.featured,stockStatus,p.size?.trim()||"",p.length?.trim()||"",p.color?.trim()||"",p.occasion?.trim()||"",p.image.trim(),p.description?.trim()||""]
     );
     res.status(201).json(normalizeProduct(r.rows[0]));
   }catch(e){res.status(500).json({error:e.message})}
@@ -319,6 +322,8 @@ app.put("/api/products/:id", requireAdmin, async (req,res)=>{
   try{
     await schemaReady;
     const id=Number(req.params.id),p=req.body||{};
+    const stockStatus=p.stockStatus||"In Stock";
+    if(!["In Stock","Limited Stock","Out of Stock"].includes(stockStatus)) return res.status(400).json({error:"Choose a valid stock status."});
     if(!p.name?.trim()) return res.status(400).json({error:"Product name is required."});
 
     const old=await pool.query("SELECT * FROM products WHERE id=$1",[id]);
@@ -349,10 +354,10 @@ app.put("/api/products/:id", requireAdmin, async (req,res)=>{
     const image=p.image?.trim()||old.rows[0].image_url;
 
     const r=await pool.query(
-      `UPDATE products SET name=$1,category=$2,price=$3,original_price=$4,offer_active=$5,offer_percent=$6,offer_price=$7,featured=$8,size=$9,length=$10,color=$11,occasion=$12,image_url=$13,description=$14
-       WHERE id=$15
-       RETURNING id,name,category,price,original_price,offer_active,offer_percent,offer_price,featured,size,length,color,occasion,image_url,description,created_at`,
-      [p.name.trim(),p.category||"Lehengas",sellingPrice,originalPrice,offerActive,offerPercent,offerPrice,!!p.featured,p.size?.trim()||"",p.length?.trim()||"",p.color?.trim()||"",p.occasion?.trim()||"",image,p.description?.trim()||"",id]
+      `UPDATE products SET name=$1,category=$2,price=$3,original_price=$4,offer_active=$5,offer_percent=$6,offer_price=$7,featured=$8,stock_status=$9,size=$10,length=$11,color=$12,occasion=$13,image_url=$14,description=$15
+       WHERE id=$16
+       RETURNING id,name,category,price,original_price,offer_active,offer_percent,offer_price,featured,stock_status,size,length,color,occasion,image_url,description,created_at`,
+      [p.name.trim(),p.category||"Lehengas",sellingPrice,originalPrice,offerActive,offerPercent,offerPrice,!!p.featured,stockStatus,p.size?.trim()||"",p.length?.trim()||"",p.color?.trim()||"",p.occasion?.trim()||"",image,p.description?.trim()||"",id]
     );
     res.json(normalizeProduct(r.rows[0]));
   }catch(e){res.status(500).json({error:e.message})}
@@ -403,9 +408,11 @@ app.post("/api/payments/create-order", async (req,res)=>{
     for(const raw of items){
       const qty=Number(raw.quantity),pid=Number(raw.productId);
       if(!Number.isInteger(qty)||qty<1||qty>99||!Number.isInteger(pid)||pid<1) throw new Error("Invalid cart item.");
-      const r=await pool.query("SELECT id,name,price FROM products WHERE id=$1",[pid]);
+      const r=await pool.query("SELECT id,name,price,stock_status FROM products WHERE id=$1",[pid]);
       if(!r.rowCount) throw new Error(`Product ${pid} not found.`);
-      const p=r.rows[0],price=Number(p.price);total+=price*qty;
+      const p=r.rows[0];
+      if(p.stock_status==="Out of Stock") throw new Error(`${p.name} is currently out of stock.`);
+      const price=Number(p.price);total+=price*qty;
       normalized.push({productId:Number(p.id),productName:p.name,price,quantity:qty});
     }
     const amount=Math.round(total*100);
@@ -413,7 +420,7 @@ app.post("/api/payments/create-order", async (req,res)=>{
     const razorpayOrder=await razorpayClient.orders.create({amount,currency:"INR",receipt:`rr_${crypto.randomBytes(12).toString("hex")}`});
     await pool.query("INSERT INTO payment_sessions(razorpay_order_id,customer,items,amount) VALUES($1,$2::jsonb,$3::jsonb,$4)",[razorpayOrder.id,JSON.stringify(customer),JSON.stringify(normalized),amount]);
     res.status(201).json({keyId:RAZORPAY_KEY_ID,razorpayOrderId:razorpayOrder.id,amount:razorpayOrder.amount,currency:razorpayOrder.currency});
-  }catch(e){const authFailed=Number(e?.statusCode)===401;if(authFailed) console.error("Razorpay authentication failed while creating an order.");const status=authFailed?401:/Please fill|Cart is empty|Invalid cart|not found|at least ₹1/.test(e.message)?400:500;res.status(status).json({error:authFailed?"Razorpay rejected the server API keys. Check that both Test Mode keys are current and from the same account.":e.message||"Could not start payment."})}
+  }catch(e){const authFailed=Number(e?.statusCode)===401;if(authFailed) console.error("Razorpay authentication failed while creating an order.");const status=authFailed?401:/Please fill|Cart is empty|Invalid cart|not found|out of stock|at least ₹1/.test(e.message)?400:500;res.status(status).json({error:authFailed?"Razorpay rejected the server API keys. Check that both Test Mode keys are current and from the same account.":e.message||"Could not start payment."})}
 });
 
 app.post("/api/payments/verify", async (req,res)=>{

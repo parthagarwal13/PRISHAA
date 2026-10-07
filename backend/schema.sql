@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS products (
     image_url TEXT NOT NULL,
     description TEXT,
     featured BOOLEAN NOT NULL DEFAULT FALSE,
+    stock_status TEXT NOT NULL DEFAULT 'In Stock' CHECK (stock_status IN ('In Stock', 'Limited Stock', 'Out of Stock')),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
